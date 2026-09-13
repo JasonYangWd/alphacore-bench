@@ -1,0 +1,1683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AlphaCore Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#E7E3D6;
+    --panel:#FFFFFF;
+    --panel-2:#FBFAF5;
+    --ink:#1B2421;
+    --muted:#5B6B66;
+    --copper:#B5652F;
+    --copper-2:#8F4C22;
+    --gold:#C98A1D;
+    --line:#D8D2C0;
+    --danger:#B23A2E;
+    --good:#2F7A52;
+    --board-face:#2C4C48;
+    --board-face-2:#233C39;
+    --pin:#D9B98A;
+    --i2c:#3E7DBF;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#10201F;
+      --panel:#172B29;
+      --panel-2:#1E3532;
+      --ink:#EAF3EF;
+      --muted:#8FA6A0;
+      --copper:#D98A4F;
+      --copper-2:#F0A868;
+      --gold:#FFD166;
+      --line:#2A4340;
+      --danger:#FF6B5E;
+      --good:#59D69B;
+      --board-face:#173029;
+      --board-face-2:#0F211C;
+      --pin:#E8C98F;
+      --i2c:#6FAEEA;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#10201F;
+    --panel:#172B29;
+    --panel-2:#1E3532;
+    --ink:#EAF3EF;
+    --muted:#8FA6A0;
+    --copper:#D98A4F;
+    --copper-2:#F0A868;
+    --gold:#FFD166;
+    --line:#2A4340;
+    --danger:#FF6B5E;
+    --good:#59D69B;
+    --board-face:#173029;
+    --board-face-2:#0F211C;
+    --pin:#E8C98F;
+    --i2c:#6FAEEA;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", system-ui, sans-serif;
+    min-height:100vh;
+  }
+  ::selection{ background:var(--copper); color:#fff; }
+  button{ font-family:inherit; }
+  button:focus-visible, [tabindex]:focus-visible, .draggable:focus-visible{
+    outline:2px solid var(--copper); outline-offset:2px;
+  }
+
+  .wrap{
+    max-width:1180px;
+    margin:0 auto;
+    padding:20px 20px 40px;
+  }
+
+  header.top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    padding:6px 2px 18px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:baseline; gap:12px; }
+  .brand .mark{
+    font-family:"Big Shoulders Display", sans-serif;
+    font-weight:800;
+    font-size:2.4rem;
+    letter-spacing:0.01em;
+    line-height:1;
+    color:var(--ink);
+    text-wrap:balance;
+  }
+  .brand .mark em{
+    font-style:normal;
+    color:var(--copper);
+  }
+  .brand .tag{
+    font-size:0.92rem;
+    color:var(--muted);
+    max-width:42ch;
+  }
+  .status-pill{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.72rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:6px 11px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    color:var(--muted);
+    white-space:nowrap;
+    align-self:center;
+  }
+  .status-pill.live{ color:var(--good); border-color:var(--good); }
+
+  .layout{
+    display:grid;
+    grid-template-columns:230px minmax(300px,1fr) 480px;
+    gap:18px;
+    align-items:start;
+  }
+  @media (max-width:980px){
+    .layout{ grid-template-columns:1fr; }
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+  }
+  .panel h2{
+    font-family:"Big Shoulders Display", sans-serif;
+    font-weight:700;
+    font-size:1.05rem;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    margin:0 0 4px;
+    color:var(--ink);
+  }
+  .panel .sub{
+    font-size:0.78rem;
+    color:var(--muted);
+    margin:0 0 14px;
+    line-height:1.5;
+  }
+
+  /* ---- Toolbox ---- */
+  .toolbox-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .toolbox-list{ display:flex; flex-direction:column; gap:10px; }
+  .module-card{
+    position:relative;
+    display:flex;
+    gap:10px;
+    align-items:center;
+    padding:10px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--panel-2);
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+  }
+  .module-card .swatch{
+    width:34px; height:34px; border-radius:9px;
+    flex:none;
+    display:flex; align-items:center; justify-content:center; flex-wrap:wrap;
+    background:var(--board-face);
+    border:1px solid var(--line);
+    gap:1px;
+    overflow:hidden;
+  }
+  .module-card .swatch.multi > *{ transform:scale(0.6); }
+  .module-card .meta{ min-width:0; }
+  .module-card .name{
+    font-family:"IBM Plex Mono", monospace;
+    font-weight:600; font-size:0.86rem;
+    color:var(--ink);
+    display:flex; align-items:center; gap:6px;
+    flex-wrap:wrap;
+  }
+  .module-card .pincost{
+    font-size:0.62rem;
+    font-weight:600;
+    color:var(--copper-2);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:1px 4px;
+    white-space:nowrap;
+  }
+  .module-card .pincost.i2c{ color:var(--i2c); }
+  .module-card .where{
+    font-size:0.72rem; color:var(--muted);
+  }
+  .module-card .del{
+    position:absolute; top:-7px; right:-7px;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line);
+    color:var(--muted); font-size:11px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .module-card .del:hover{ color:var(--danger); border-color:var(--danger); }
+
+  /* ---- Module editor ---- */
+  .editor-panel{ margin-top:18px; }
+  .editor-row{ display:flex; gap:22px; flex-wrap:wrap; }
+  .palette{ display:flex; flex-wrap:wrap; gap:8px; flex:2 1 320px; align-content:flex-start; }
+  .palette-btn{
+    display:flex; align-items:center; gap:8px;
+    padding:7px 10px; border:1px solid var(--line); border-radius:8px;
+    background:var(--panel-2); cursor:pointer;
+    font-family:"IBM Plex Mono", monospace; font-size:0.76rem;
+    color:var(--ink);
+  }
+  .palette-btn:hover{ filter:brightness(1.06); }
+  .palette-btn:disabled{ opacity:0.4; cursor:not-allowed; filter:none; }
+  .palette-btn .swatch-mini{
+    width:26px; height:26px; border-radius:6px;
+    background:var(--board-face); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .draft-col{ flex:1 1 240px; display:flex; flex-direction:column; gap:10px; min-width:220px; }
+  .draft-list{
+    display:flex; flex-wrap:wrap; align-content:flex-start; gap:6px;
+    min-height:44px; border:1px dashed var(--line); border-radius:8px; padding:8px;
+  }
+  .draft-list:empty::after{
+    content:"Click parts on the left to add them here";
+    font-size:0.72rem; color:var(--muted);
+  }
+  .draft-chip{
+    display:flex; align-items:center; gap:4px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
+    padding:3px 4px 3px 7px;
+    font-family:"IBM Plex Mono", monospace; font-size:0.7rem;
+  }
+  .draft-chip button{
+    border:none; background:none; color:var(--muted); cursor:pointer; font-size:12px; padding:2px;
+  }
+  .draft-chip button:hover{ color:var(--danger); }
+  .editor-bar{ display:flex; align-items:center; gap:10px; font-family:"IBM Plex Mono", monospace; font-size:0.74rem; color:var(--muted); }
+  .editor-bar .track{
+    flex:1; height:8px; border-radius:4px;
+    background:var(--panel-2); border:1px solid var(--line); overflow:hidden;
+  }
+  .editor-bar .fill{ height:100%; background:var(--copper); transition:width .15s; }
+  .editor-bar .fill.over{ background:var(--danger); }
+  .editor-name{
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:8px;
+    background:var(--panel-2); color:var(--ink);
+    font-family:"IBM Plex Sans", sans-serif; font-size:0.85rem;
+  }
+  .editor-actions{ display:flex; gap:8px; }
+
+  /* ---- Board ---- */
+  .board-panel{ display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .board-stage{
+    position:relative;
+    width:min(500px, 100%);
+    aspect-ratio:1/1;
+  }
+  .board-stage svg{ width:100%; height:100%; display:block; }
+  .dropzone{
+    position:absolute;
+    width:88px; height:104px;
+    margin-left:-44px; margin-top:-52px;
+    border-radius:16px;
+    border:2px dashed transparent;
+    display:flex; align-items:flex-start; justify-content:center;
+    transition:background 0.15s, border-color 0.15s, transform 0.15s;
+  }
+  .dropzone[data-empty="true"]{
+    border-color:color-mix(in srgb, var(--copper) 35%, transparent);
+  }
+  .dropzone.drag-over{
+    border-color:var(--copper);
+    background:color-mix(in srgb, var(--copper) 16%, transparent);
+    transform:scale(1.04);
+  }
+  .dropzone.drag-over.full{
+    border-color:var(--danger);
+    background:color-mix(in srgb, var(--danger) 14%, transparent);
+  }
+  .mod-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 38px);
+    grid-auto-rows:40px;
+    gap:4px;
+    justify-content:center;
+    align-content:start;
+    width:100%;
+    padding-top:4px;
+    position:relative;
+  }
+  .edge-detach{
+    position:absolute; top:-8px; right:6px;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line);
+    color:var(--muted); font-size:11px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; z-index:2;
+  }
+  .edge-detach:hover{ color:var(--danger); border-color:var(--danger); }
+  .zone-label{
+    position:absolute;
+    bottom:-32px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.6rem;
+    letter-spacing:0.04em;
+    text-transform:uppercase;
+    color:var(--muted);
+    white-space:nowrap;
+    text-align:center;
+    width:100%;
+    left:0;
+    line-height:1.5;
+  }
+  .zone-label .edge-line{ display:block; }
+  .zone-label .module-label{
+    display:block;
+    color:var(--ink);
+    font-weight:600;
+    font-size:0.62rem;
+  }
+  .zone-label .pin-usage{
+    display:block;
+    font-size:0.58rem;
+    color:var(--copper-2);
+  }
+  .zone-label .pin-usage.full{ color:var(--danger); }
+  .zone-label .i2c-usage{
+    display:block;
+    font-size:0.58rem;
+    color:var(--i2c);
+  }
+  .mod-chip{
+    position:relative;
+    width:38px; height:40px;
+    border-radius:8px;
+    background:var(--board-face-2);
+    border:1px solid var(--copper);
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    gap:2px;
+    padding-top:3px;
+  }
+  .mod-chip.i2c-mod{ border-color:var(--i2c); }
+  .mod-chip .icon-holder{ display:flex; align-items:center; justify-content:center; height:24px; }
+  .mod-chip .bind-input{
+    width:34px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.5rem;
+    text-align:center;
+    color:var(--ink);
+    background:transparent;
+    border:none;
+    border-bottom:1px dashed transparent;
+    padding:0;
+    outline:none;
+  }
+  .mod-chip .bind-input:hover, .mod-chip .bind-input:focus{ border-bottom-color:var(--copper); }
+
+  /* LED */
+  .led-bulb{
+    width:22px; height:22px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #6b675a, #3a372e);
+    box-shadow:inset 0 0 0 2px rgba(0,0,0,0.25);
+    transition:box-shadow 0.15s, background 0.15s;
+  }
+  .led-bulb.on{
+    background:radial-gradient(circle at 35% 30%, #fff2c4, var(--gold));
+    box-shadow:0 0 16px 5px color-mix(in srgb, var(--gold) 70%, transparent);
+  }
+  /* Buzzer */
+  .buzz-icon{ position:relative; width:22px; height:22px; }
+  .buzz-icon .core{
+    position:absolute; inset:5px; border-radius:50%;
+    background:var(--copper-2);
+  }
+  .buzz-icon .ring{
+    position:absolute; inset:0; border-radius:50%;
+    border:2px solid var(--copper);
+    opacity:0;
+  }
+  .buzz-icon.beep .ring{
+    animation:ring-pulse 0.5s ease-out;
+  }
+  @keyframes ring-pulse{
+    from{ opacity:0.9; transform:scale(0.4); }
+    to{ opacity:0; transform:scale(1.6); }
+  }
+  /* Button */
+  .btn-icon{
+    width:24px; height:24px; border-radius:7px;
+    background:linear-gradient(180deg, #4a5b57, #2f3d3a);
+    border:1px solid rgba(0,0,0,0.3);
+    box-shadow:0 3px 0 rgba(0,0,0,0.35);
+    transition:transform 0.06s, box-shadow 0.06s;
+  }
+  .btn-icon.pressed{
+    transform:translateY(3px);
+    box-shadow:0 0 0 rgba(0,0,0,0.35);
+    background:linear-gradient(180deg, var(--copper), var(--copper-2));
+  }
+  /* Dial */
+  .dial-icon{
+    width:24px; height:24px; border-radius:50%;
+    background:conic-gradient(var(--copper) calc(var(--pct,0) * 1%), var(--board-face) 0);
+    display:flex; align-items:center; justify-content:center;
+    cursor:ew-resize;
+  }
+  .dial-icon .knob{
+    width:11px; height:11px; border-radius:50%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+  }
+  /* Servo (Move) */
+  .servo-icon{
+    width:24px; height:24px; border-radius:50%;
+    background:var(--board-face);
+    border:1px solid var(--line);
+    position:relative;
+  }
+  .servo-icon .arm{
+    position:absolute;
+    left:50%; top:50%;
+    width:2px; height:10px;
+    background:var(--gold);
+    transform-origin:top center;
+    transform:translate(-50%,0) rotate(calc(var(--ang,90) * 1deg - 90deg));
+    transition:transform 0.15s ease-out;
+  }
+  .servo-icon .hub{
+    position:absolute; left:50%; top:50%;
+    width:4px; height:4px; margin:-2px 0 0 -2px;
+    border-radius:50%; background:var(--copper);
+  }
+
+  /* Light sensor (photodiode/LDR) */
+  .light-icon{
+    width:24px; height:24px; border-radius:50%;
+    position:relative;
+    background:var(--board-face);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .light-icon .sensor-core{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    z-index:1;
+  }
+  .light-icon .glow{
+    position:absolute; inset:2px; border-radius:50%;
+    opacity:0; transition:opacity 0.15s, box-shadow 0.15s;
+  }
+  .light-icon.dark .glow{ opacity:0; }
+  .light-icon.ambient .glow{
+    opacity:0.55;
+    box-shadow:0 0 7px 2px color-mix(in srgb, var(--copper) 60%, transparent);
+    background:color-mix(in srgb, var(--copper) 30%, transparent);
+  }
+  .light-icon.bright .glow{
+    opacity:0.9;
+    box-shadow:0 0 12px 4px color-mix(in srgb, var(--gold) 70%, transparent);
+    background:color-mix(in srgb, var(--gold) 40%, transparent);
+  }
+
+  /* Motor */
+  .motor-icon{
+    width:24px; height:24px; border-radius:50%;
+    background:var(--board-face);
+    border:2px solid var(--copper);
+    position:relative;
+  }
+  .motor-icon .blade{
+    position:absolute; left:50%; top:50%;
+    width:16px; height:2px; margin:-1px 0 0 -8px;
+    background:var(--gold);
+  }
+  .motor-icon .blade.spin{ animation:motor-spin linear infinite; }
+  .motor-icon .blade2{
+    position:absolute; left:50%; top:50%;
+    width:2px; height:16px; margin:-8px 0 0 -1px;
+    background:var(--gold);
+    opacity:0.7;
+  }
+  .motor-icon .blade2.spin{ animation:motor-spin linear infinite; }
+  @keyframes motor-spin{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+
+  /* Joystick */
+  .joy-icon{
+    width:24px; height:24px; border-radius:6px;
+    background:var(--board-face);
+    border:1px solid var(--line);
+    position:relative;
+    cursor:crosshair;
+  }
+  .joy-icon .nub{
+    position:absolute;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--copper);
+    transform:translate(-50%,-50%);
+  }
+
+  /* Display (I2C) */
+  .lcd-icon{
+    width:26px; height:20px; border-radius:3px;
+    background:#0d1f1b;
+    border:1px solid var(--i2c);
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .lcd-icon span{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.4rem;
+    color:#7CE3B3;
+    white-space:nowrap;
+  }
+
+  .board-caption{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.72rem;
+    color:var(--muted);
+    text-align:center;
+    max-width:48ch;
+    line-height:1.5;
+  }
+
+  .ghost{
+    position:fixed;
+    pointer-events:none;
+    z-index:999;
+    width:44px; height:44px;
+    border-radius:10px;
+    background:var(--board-face-2);
+    border:1px solid var(--copper);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0.9;
+    transform:translate(-50%,-50%);
+  }
+
+  /* ---- Notebook / code ---- */
+  .notebook{ display:flex; flex-direction:column; gap:12px; }
+  .api-hints{
+    display:flex; flex-wrap:wrap; gap:6px;
+    margin-bottom:2px;
+  }
+  .api-hints code{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.7rem;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:3px 7px;
+    color:var(--copper-2);
+  }
+  .api-hints code.i2c{ color:var(--i2c); }
+  textarea#code{
+    width:100%;
+    min-height:420px;
+    resize:vertical;
+    background:var(--board-face-2);
+    color:#EAF3EF;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.84rem;
+    line-height:1.55;
+    tab-size:2;
+  }
+  .controls{ display:flex; gap:8px; flex-wrap:wrap; }
+  .btn{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.78rem;
+    font-weight:600;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    padding:9px 16px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--panel-2);
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .btn.primary{
+    background:var(--copper);
+    border-color:var(--copper);
+    color:#fff;
+  }
+  .btn.primary.running{
+    background:var(--danger);
+    border-color:var(--danger);
+  }
+  .btn:hover{ filter:brightness(1.06); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; filter:none; }
+  .console{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.76rem;
+    background:var(--board-face-2);
+    color:#CFE3DD;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    min-height:110px;
+    max-height:170px;
+    overflow-y:auto;
+    line-height:1.6;
+    white-space:pre-wrap;
+  }
+  .console .err{ color:var(--danger); }
+  .console .ok{ color:var(--good); }
+  .console .dim{ color:var(--muted); }
+
+  @media (prefers-reduced-motion: reduce){
+    .led-bulb, .buzz-icon .ring, .btn-icon, .dropzone, .servo-icon .arm, .motor-icon .blade, .motor-icon .blade2{ transition:none; animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark">Alpha<em>Core</em> Bench</div>
+      <div class="tag">One ESP32 hub, six pluggable edges. Each edge holds exactly one module &mdash; build a multi-part module in the editor to make full use of its 4 GPIO pins.</div>
+    </div>
+    <div class="status-pill" id="statusPill">idle</div>
+  </header>
+
+  <div class="layout">
+    <section class="panel" aria-label="Module toolbox">
+      <div class="toolbox-head">
+        <h2>Toolbox</h2>
+      </div>
+      <p class="sub">Drag a part onto any populated edge, or build a composite module first. Each edge holds exactly one module.</p>
+      <button class="btn" id="openEditorBtn" style="width:100%;margin-bottom:12px;">+ Build module</button>
+      <div class="toolbox-list" id="toolboxList"></div>
+    </section>
+
+    <section class="panel board-panel" aria-label="AlphaCore edges">
+      <h2 style="align-self:flex-start;">AlphaCore Edges</h2>
+      <div class="board-stage" id="boardStage">
+        <svg viewBox="0 0 600 600" id="boardSvg"></svg>
+      </div>
+      <p class="board-caption">All 6 hexagon edges are pluggable here, each an identical 7-pin connector: power plus 4 generic GPIO pins (DO/DI/PWM/ADC), and every edge also reaches the shared I2C bus. Note: the real AlphaCore board only wires up 4 of these 6 (the ESP32's GPIO budget runs out) &mdash; the extra two are a bench-only sandbox for combining more modules.</p>
+    </section>
+
+    <section class="panel notebook" aria-label="Code notebook">
+      <h2>Notebook</h2>
+      <p class="sub">Write <code style="font-family:inherit">setup()</code> and <code style="font-family:inherit">loop()</code> for the master. Only modules attached to an edge are available below.</p>
+      <div class="api-hints" id="apiHints"></div>
+      <textarea id="code" spellcheck="false"></textarea>
+      <div class="controls">
+        <button class="btn primary" id="runBtn">Run</button>
+        <button class="btn" id="resetBtn">Reset board</button>
+      </div>
+      <div class="console" id="consoleLog" role="log" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <section class="panel editor-panel" id="editorPanel" aria-label="Module editor" hidden>
+    <h2>Module Editor</h2>
+    <p class="sub">Combine parts into one composite module (up to 4 GPIO pins total; I2C parts don't count against that budget), then save it to the toolbox.</p>
+    <div class="editor-row">
+      <div class="palette" id="editorPalette"></div>
+      <div class="draft-col">
+        <div class="draft-list" id="draftList"></div>
+        <div class="editor-bar">
+          <span id="editorPinLabel">0/4 pins</span>
+          <div class="track"><div class="fill" id="editorPinFill" style="width:0%"></div></div>
+          <span id="editorI2cLabel"></span>
+        </div>
+        <input type="text" class="editor-name" id="editorName" placeholder="Name this module (e.g. Sensor Rig)" maxlength="40">
+        <div class="editor-actions">
+          <button class="btn primary" id="editorSaveBtn">Save to toolbox</button>
+          <button class="btn" id="editorCancelBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var EDGE_PINS = 4;
+  var STORAGE_KEY = "alphacoreBench.customModules";
+
+  /* ---------- geometry ---------- */
+  var CX = 300, CY = 300, R = 165;
+  function vx(i){ var a = (60*i) * Math.PI/180; return { x: CX + R*Math.cos(a), y: CY + R*Math.sin(a) }; }
+  var V = [0,1,2,3,4,5].map(vx);
+
+  // All 6 hex edges are pluggable in the Bench. On the real board only 4
+  // (Top, Upper-Left, Upper-Right, Bottom) carry a header — the ESP32's GPIO
+  // budget runs out before Lower-Left/Lower-Right — but the Bench is a
+  // teaching sandbox, not a firmware target, so all 6 are open here.
+  var ALL_SIDES = [
+    { name:"LowerRight", a:0, b:1 },
+    { name:"Bottom",     a:1, b:2 },
+    { name:"LowerLeft",  a:2, b:3 },
+    { name:"UpperLeft",  a:3, b:4 },
+    { name:"Top",        a:4, b:5 },
+    { name:"UpperRight", a:5, b:0 }
+  ];
+  var NODE_OFFSET = 100;
+  ALL_SIDES.forEach(function(e){
+    var p1 = V[e.a], p2 = V[e.b];
+    e.mid = { x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 };
+    var nx = e.mid.x - CX, ny = e.mid.y - CY;
+    var len = Math.hypot(nx, ny);
+    e.normal = { x:nx/len, y:ny/len };
+    e.p1 = p1; e.p2 = p2;
+    e.nodeCenter = { x: e.mid.x + e.normal.x*NODE_OFFSET, y: e.mid.y + e.normal.y*NODE_OFFSET };
+  });
+  var EDGES = ALL_SIDES;
+
+  /* ---------- component library ---------- */
+  // pinCost: how many of an edge's 4 generic GPIO pins one of these takes.
+  // usesI2C: rides the shared bus instead — doesn't touch the GPIO budget.
+  var COMPONENTS = {
+    AlphaLED: {
+      label:"AlphaLED", kind:"LED &middot; 1 GPIO (DO)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","On()","Off()","Toggle()"],
+      makeState:function(){ return { on:false }; },
+      renderIcon:function(state){ return '<div class="led-bulb'+(state.on?' on':'')+'"></div>'; },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaLED", edgeName, edge); },
+          On:function(){ ctx.state.on = true; ctx.refresh(); },
+          Off:function(){ ctx.state.on = false; ctx.refresh(); },
+          Toggle:function(){ ctx.state.on = !ctx.state.on; ctx.refresh(); }
+        };
+      }
+    },
+    AlphaBuzzer: {
+      label:"AlphaBuzzer", kind:"Piezo &middot; 1 GPIO (DO)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","Beep(ms)","On()","Off()"],
+      makeState:function(){ return { on:false, beeping:false }; },
+      renderIcon:function(state){
+        return '<div class="buzz-icon'+(state.beeping?' beep':'')+'"><div class="ring"></div><div class="core"></div></div>';
+      },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaBuzzer", edgeName, edge); },
+          On:function(){ ctx.state.on = true; ctx.refresh(); },
+          Off:function(){ ctx.state.on = false; ctx.refresh(); },
+          Beep:function(ms){
+            ctx.state.beeping = true; ctx.refresh();
+            clearTimeout(ctx.state._t);
+            ctx.state._t = setTimeout(function(){ ctx.state.beeping = false; ctx.refresh(); }, Math.max(80, Math.min(2000, ms||150)));
+          }
+        };
+      }
+    },
+    AlphaButton: {
+      label:"AlphaButton", kind:"Momentary &middot; 1 GPIO (DI)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","IsPressed()"],
+      makeState:function(){ return { pressed:false }; },
+      renderIcon:function(state){ return '<div class="btn-icon'+(state.pressed?' pressed':'')+'" data-hold="1"></div>'; },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaButton", edgeName, edge); },
+          IsPressed:function(){ return !!ctx.state.pressed; }
+        };
+      }
+    },
+    AlphaDial: {
+      label:"AlphaDial", kind:"Potentiometer &middot; 1 GPIO (ADC)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","Read()"],
+      makeState:function(){ return { value:20 }; },
+      renderIcon:function(state){ return '<div class="dial-icon" data-dial="1" style="--pct:'+state.value+'"><div class="knob"></div></div>'; },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaDial", edgeName, edge); },
+          Read:function(){ return ctx.state.value; }
+        };
+      }
+    },
+    AlphaServo: {
+      label:"AlphaServo", kind:"Servo &middot; 1 GPIO (PWM)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","MoveTo(deg)","Center()","Angle()"],
+      makeState:function(){ return { angle:90 }; },
+      renderIcon:function(state){
+        return '<div class="servo-icon" style="--ang:'+state.angle+'"><div class="arm"></div><div class="hub"></div></div>';
+      },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaServo", edgeName, edge); },
+          MoveTo:function(deg){ ctx.state.angle = Math.max(0, Math.min(180, deg||0)); ctx.refresh(); },
+          Center:function(){ ctx.state.angle = 90; ctx.refresh(); },
+          Angle:function(){ return ctx.state.angle; }
+        };
+      }
+    },
+    AlphaLight: {
+      label:"AlphaLight", kind:"Photodiode/LDR &middot; 1 GPIO (ADC)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","Read()"],
+      makeState:function(){ return { value:40, target:40 }; },
+      renderIcon:function(state){
+        var pct = Math.max(0, Math.min(100, Math.round(state.value)));
+        var band = pct <= 33 ? "dark" : pct <= 66 ? "ambient" : "bright";
+        return '<div class="light-icon '+band+'" style="--pct:'+pct+'"><div class="sensor-core"></div><div class="glow"></div></div>';
+      },
+      runtime:function(edgeName, ctx){
+        function scheduleNextFlip(){
+          var delay = 4000 + Math.random()*6000;
+          ctx.state._flipHandle = setTimeout(function(){
+            var bright = Math.random() < 0.5;
+            ctx.state.target = bright ? (70 + Math.random()*20) : (10 + Math.random()*15);
+            scheduleNextFlip();
+          }, delay);
+        }
+        function startTicking(){
+          ctx.state._tickHandle = setInterval(function(){
+            var easeStep = (ctx.state.target - ctx.state.value) * 0.15;
+            var jitter = (Math.random() - 0.5) * 4;
+            ctx.state.value = Math.max(0, Math.min(100, ctx.state.value + easeStep + jitter));
+            ctx.refresh();
+          }, 100);
+        }
+        return {
+          Init:function(edge){
+            ctx.checkEdge("AlphaLight", edgeName, edge);
+            if (!ctx.state._flipHandle) scheduleNextFlip();
+            if (!ctx.state._tickHandle) startTicking();
+          },
+          Read:function(){ return Math.round(ctx.state.value); }
+        };
+      }
+    },
+    AlphaMotor: {
+      label:"AlphaMotor", kind:"Motor &middot; 2 GPIO (PWM+ADC)", pinCost:2, usesI2C:false,
+      api:["Init(edge)","SetSpeed(pct)","Stop()","Feedback()"],
+      makeState:function(){ return { speed:0, feedback:0 }; },
+      renderIcon:function(state){
+        var spin = Math.abs(state.speed) > 2;
+        var dur = spin ? Math.max(0.15, 1.1 - Math.abs(state.speed)/100) + "s" : "0s";
+        return '<div class="motor-icon"><div class="blade'+(spin?' spin':'')+'" style="animation-duration:'+dur+'"></div><div class="blade2'+(spin?' spin':'')+'" style="animation-duration:'+dur+'"></div></div>';
+      },
+      runtime:function(edgeName, ctx){
+        function tick(){
+          ctx.state._t = setInterval(function(){
+            var noise = (Math.random()-0.5) * 4;
+            ctx.state.feedback = Math.max(0, Math.min(100, Math.abs(ctx.state.speed) + noise));
+          }, 150);
+        }
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaMotor", edgeName, edge); if (!ctx.state._t) tick(); },
+          SetSpeed:function(pct){ ctx.state.speed = Math.max(-100, Math.min(100, pct||0)); ctx.refresh(); },
+          Stop:function(){ ctx.state.speed = 0; ctx.refresh(); },
+          Feedback:function(){ return Math.round(ctx.state.feedback); }
+        };
+      }
+    },
+    AlphaJoystick: {
+      label:"AlphaJoystick", kind:"Joystick &middot; 2 GPIO (ADC x2)", pinCost:2, usesI2C:false,
+      api:["Init(edge)","X()","Y()"],
+      makeState:function(){ return { x:50, y:50 }; },
+      renderIcon:function(state){
+        var left = Math.max(10, Math.min(90, state.x)) + "%";
+        var top = Math.max(10, Math.min(90, 100-state.y)) + "%";
+        return '<div class="joy-icon" data-joy="1"><div class="nub" style="left:'+left+';top:'+top+'"></div></div>';
+      },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaJoystick", edgeName, edge); },
+          X:function(){ return Math.round(ctx.state.x); },
+          Y:function(){ return Math.round(ctx.state.y); }
+        };
+      }
+    },
+    AlphaDisplay: {
+      label:"AlphaDisplay", kind:"LCD/OLED &middot; I2C bus", pinCost:0, usesI2C:true,
+      api:["Init(edge)","Print(text)","Clear()"],
+      makeState:function(){ return { text:"" }; },
+      renderIcon:function(state){
+        var t = (state.text||"").slice(0,10);
+        return '<div class="lcd-icon"><span>'+(t ? t.replace(/[<>&]/g, function(c){ return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c]; }) : "&nbsp;")+'</span></div>';
+      },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaDisplay", edgeName, edge); },
+          Print:function(text){ ctx.state.text = String(text==null?"":text); ctx.refresh(); },
+          Clear:function(){ ctx.state.text = ""; ctx.refresh(); }
+        };
+      }
+    }
+  };
+  var COMPONENT_ORDER = ["AlphaLED","AlphaButton","AlphaBuzzer","AlphaDial","AlphaServo","AlphaLight","AlphaMotor","AlphaJoystick","AlphaDisplay"];
+
+  /* ---------- module specs (toolbox entries) ---------- */
+  // A "spec" is what's draggable from the toolbox: a base spec wraps exactly
+  // one component; a custom spec (built in the editor, kind:"custom") bundles
+  // several components into one module that fills exactly one edge slot.
+  var specs = {};
+  COMPONENT_ORDER.forEach(function(type){
+    specs[type] = { id:type, kind:"base", label:COMPONENTS[type].label, children:[type] };
+  });
+  var customOrder = [];
+
+  function specPinCost(spec){
+    return spec.children.reduce(function(sum, t){ return sum + (COMPONENTS[t].usesI2C ? 0 : COMPONENTS[t].pinCost); }, 0);
+  }
+  function specUsesI2C(spec){
+    return spec.children.some(function(t){ return COMPONENTS[t].usesI2C; });
+  }
+
+  function loadCustomSpecs(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      list.forEach(function(s){
+        if (!s || !s.id || !Array.isArray(s.children)) return;
+        var children = s.children.filter(function(t){ return !!COMPONENTS[t]; });
+        if (!children.length) return;
+        specs[s.id] = { id:s.id, kind:"custom", label:String(s.label||"Custom module").slice(0,40), children:children };
+        customOrder.push(s.id);
+      });
+    } catch (e){ /* localStorage unavailable (e.g. file:// origin) — start empty */ }
+  }
+  function persistCustomSpecs(){
+    try {
+      var list = customOrder.map(function(id){ return { id:specs[id].id, label:specs[id].label, children:specs[id].children }; });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    } catch (e){ /* ignore — nothing to do if storage is unavailable */ }
+  }
+  loadCustomSpecs();
+
+  /* ---------- board state ---------- */
+  // Each edge holds at most one module "bundle": null, or { specId, label, children:[instance,...] }.
+  var slots = { Top:null, UpperRight:null, LowerRight:null, Bottom:null, LowerLeft:null, UpperLeft:null };
+  var nextId = 1;
+
+  function forEachInstance(fn){
+    for (var name in slots){
+      if (slots[name]) slots[name].children.forEach(function(inst){ fn(inst, name); });
+    }
+  }
+  function pinsUsed(edgeName){
+    var bundle = slots[edgeName];
+    if (!bundle) return 0;
+    return bundle.children.reduce(function(sum, inst){ return sum + (inst.usesI2C ? 0 : inst.pinCost); }, 0);
+  }
+  function i2cCount(edgeName){
+    var bundle = slots[edgeName];
+    return bundle ? bundle.children.filter(function(inst){ return inst.usesI2C; }).length : 0;
+  }
+  function findInstance(id){
+    for (var name in slots){
+      if (!slots[name]) continue;
+      var children = slots[name].children;
+      for (var i=0;i<children.length;i++){ if (children[i].id === id) return { inst: children[i], edge: name }; }
+    }
+    return null;
+  }
+  function edgesForSpec(specId){
+    var out = [];
+    for (var name in slots){ if (slots[name] && slots[name].specId === specId) out.push(name); }
+    return out;
+  }
+
+  var EXAMPLE = [
+    "// The Reach -- a dial on one edge steers a servo on another;",
+    "// a button on a third edge can halt the arm. Each edge here",
+    "// holds just one single-part module, using 1 of its 4 pins.",
+    "function setup() {",
+    "  AlphaDial.Init(UpperLeft);     // Upper-Left -- bearing input (ADC)",
+    "  AlphaServo.Init(Top);          // Top -- the arm (PWM)",
+    "  AlphaButton.Init(Bottom);      // Bottom -- emergency stop (DI)",
+    "  AlphaLED.Init(UpperRight);     // Upper-Right -- status light (DO)",
+    "  Serial.println(\"AlphaCore online: 6 edges, 24 GPIO pins total.\");",
+    "}",
+    "",
+    "function loop() {",
+    "  var bearing = AlphaDial.Read();     // 0-100",
+    "  var stop    = AlphaButton.IsPressed();",
+    "",
+    "  if (stop) {",
+    "    AlphaLED.Off();",
+    "  } else {",
+    "    AlphaServo.MoveTo(Math.round(bearing * 1.8));   // 0-180 deg",
+    "    AlphaLED.On();",
+    "  }",
+    "}"
+  ].join("\n");
+
+  /* ---------- svg board render (static parts) ---------- */
+  var svg = document.getElementById("boardSvg");
+  (function drawBoard(){
+    var ns = "http://www.w3.org/2000/svg";
+    function el(tag, attrs){
+      var n = document.createElementNS(ns, tag);
+      for (var k in attrs) n.setAttribute(k, attrs[k]);
+      return n;
+    }
+    var pts = V.map(function(p){ return p.x.toFixed(1)+","+p.y.toFixed(1); }).join(" ");
+
+    var defs = el("defs", {});
+    var grad = el("radialGradient", { id:"boardGrad", cx:"35%", cy:"30%", r:"75%" });
+    grad.appendChild(el("stop", { offset:"0%", "stop-color":"var(--board-face)" }));
+    grad.appendChild(el("stop", { offset:"100%", "stop-color":"var(--board-face-2)" }));
+    defs.appendChild(grad);
+    svg.appendChild(defs);
+
+    // header traces: master edge midpoint -> the 7-pin connector
+    EDGES.forEach(function(e){
+      svg.appendChild(el("line", {
+        x1:e.mid.x.toFixed(1), y1:e.mid.y.toFixed(1),
+        x2:e.nodeCenter.x.toFixed(1), y2:e.nodeCenter.y.toFixed(1),
+        stroke:"var(--copper)", "stroke-width":"2", "stroke-dasharray":"1 5", "stroke-linecap":"round", opacity:"0.85"
+      }));
+    });
+
+    // master hex
+    svg.appendChild(el("polygon", { points:pts, fill:"url(#boardGrad)", stroke:"var(--copper)", "stroke-width":"2.5" }));
+
+    var inner = V.map(function(p){
+      var x = CX + (p.x-CX)*0.82, y = CY + (p.y-CY)*0.82;
+      return x.toFixed(1)+","+y.toFixed(1);
+    }).join(" ");
+    svg.appendChild(el("polygon", { points:inner, fill:"none", stroke:"var(--line)", "stroke-width":"1", "stroke-dasharray":"3 4", opacity:"0.7" }));
+
+    // 7-pin headers on all 6 edges
+    EDGES.forEach(function(e){
+      var count = 7, group = el("g", { opacity:"1" });
+      for (var i=0;i<count;i++){
+        var t = (i+1)/(count+1);
+        var x = e.p1.x + (e.p2.x-e.p1.x)*t;
+        var y = e.p1.y + (e.p2.y-e.p1.y)*t;
+        group.appendChild(el("circle", { cx:x.toFixed(1), cy:y.toFixed(1), r:"3", fill:"var(--pin)" }));
+      }
+      svg.appendChild(group);
+    });
+
+    var chip = el("rect", { x:CX-46, y:CY-30, width:92, height:60, rx:8, fill:"var(--panel-2)", stroke:"var(--line)" });
+    svg.appendChild(chip);
+    var label = el("text", { x:CX, y:CY-4, "text-anchor":"middle", "font-size":"12", "font-family":"IBM Plex Mono, monospace", "font-weight":"600", fill:"var(--ink)" });
+    label.textContent = "ESP32";
+    svg.appendChild(label);
+    var label2 = el("text", { x:CX, y:CY+14, "text-anchor":"middle", "font-size":"9", "font-family":"IBM Plex Mono, monospace", fill:"var(--muted)" });
+    label2.textContent = "6 x 7-PIN EDGES";
+    svg.appendChild(label2);
+    svg.appendChild(el("circle", { cx:CX+34, cy:CY-22, r:"3", fill:"var(--good)" }));
+
+    // small header outline box at each edge
+    EDGES.forEach(function(e){
+      var nc = e.nodeCenter;
+      var w = 96, h = 112;
+      svg.appendChild(el("rect", {
+        x:(nc.x - w/2).toFixed(1), y:(nc.y - h/2 - 8).toFixed(1), width:w, height:h, rx:14,
+        fill:"var(--panel-2)", stroke:"var(--line)", "stroke-width":"1.5"
+      }));
+    });
+  })();
+
+  /* ---------- dropzones (HTML overlay, percentage-positioned) ---------- */
+  var VBOX = 600;
+  var stage = document.getElementById("boardStage");
+  var pinUsageEls = {}, i2cUsageEls = {}, moduleLabelEls = {}, edgeDetachEls = {};
+  EDGES.forEach(function(e){
+    var z = document.createElement("div");
+    z.className = "dropzone";
+    z.dataset.edge = e.name;
+    z.style.left = (e.nodeCenter.x/VBOX*100) + "%";
+    z.style.top  = ((e.nodeCenter.y - 8)/VBOX*100) + "%";
+
+    var detach = document.createElement("div");
+    detach.className = "edge-detach";
+    detach.textContent = "×";
+    detach.title = "Detach module";
+    detach.hidden = true;
+    detach.addEventListener("pointerdown", function(ev){ ev.stopPropagation(); });
+    detach.addEventListener("click", function(ev){ ev.stopPropagation(); detachEdge(e.name); });
+    z.appendChild(detach);
+    edgeDetachEls[e.name] = detach;
+
+    var grid = document.createElement("div");
+    grid.className = "mod-grid";
+    z.appendChild(grid);
+
+    var lab = document.createElement("div");
+    lab.className = "zone-label";
+    var edgeLine = document.createElement("span");
+    edgeLine.className = "edge-line";
+    edgeLine.textContent = e.name.replace(/([A-Z])/g, " $1").trim();
+    lab.appendChild(edgeLine);
+    var moduleLabel = document.createElement("span");
+    moduleLabel.className = "module-label";
+    lab.appendChild(moduleLabel);
+    var pinUsage = document.createElement("span");
+    pinUsage.className = "pin-usage";
+    lab.appendChild(pinUsage);
+    var i2cUsage = document.createElement("span");
+    i2cUsage.className = "i2c-usage";
+    lab.appendChild(i2cUsage);
+    z.appendChild(lab);
+
+    stage.appendChild(z);
+    e.zoneEl = z;
+    e.gridEl = grid;
+    pinUsageEls[e.name] = pinUsage;
+    i2cUsageEls[e.name] = i2cUsage;
+    moduleLabelEls[e.name] = moduleLabel;
+  });
+
+  /* ---------- toolbox ---------- */
+  var toolboxList = document.getElementById("toolboxList");
+
+  function iconForSpec(spec){
+    if (spec.children.length === 1){
+      return COMPONENTS[spec.children[0]].renderIcon(COMPONENTS[spec.children[0]].makeState());
+    }
+    return spec.children.map(function(t){ return COMPONENTS[t].renderIcon(COMPONENTS[t].makeState()); }).join("");
+  }
+
+  function renderToolbox(){
+    toolboxList.innerHTML = "";
+    var allIds = COMPONENT_ORDER.concat(customOrder);
+    allIds.forEach(function(id){
+      var spec = specs[id];
+      if (!spec) return;
+      var pins = specPinCost(spec), i2c = specUsesI2C(spec);
+      var costLabel = (pins ? (pins + " pin" + (pins>1?"s":"")) : "") + (pins && i2c ? " + " : "") + (i2c ? "I2C" : "");
+      var card = document.createElement("div");
+      card.className = "module-card draggable";
+      card.tabIndex = 0;
+      card.dataset.spec = id;
+      var multi = spec.children.length > 1;
+      card.innerHTML =
+        '<div class="swatch'+(multi?' multi':'')+'">'+iconForSpec(spec)+'</div>'+
+        '<div class="meta"><div class="name">'+spec.label+' <span class="pincost'+(i2c && !pins?' i2c':'')+'">'+costLabel+'</span></div><div class="where"></div></div>';
+      if (spec.kind === "custom"){
+        var del = document.createElement("div");
+        del.className = "del";
+        del.textContent = "×";
+        del.title = "Remove this custom module from the toolbox";
+        del.addEventListener("pointerdown", function(ev){ ev.stopPropagation(); });
+        del.addEventListener("click", function(ev){ ev.stopPropagation(); deleteCustomSpec(id); });
+        card.appendChild(del);
+      }
+      toolboxList.appendChild(card);
+    });
+    updateToolboxWhere();
+  }
+
+  function updateToolboxWhere(){
+    Array.prototype.forEach.call(toolboxList.children, function(card){
+      var id = card.dataset.spec;
+      var edges = edgesForSpec(id);
+      var where = card.querySelector(".where");
+      where.textContent = edges.length
+        ? ("on " + edges.map(function(n){ return n.replace(/([A-Z])/g," $1").trim(); }).join(", "))
+        : "";
+    });
+  }
+
+  function deleteCustomSpec(id){
+    if (edgesForSpec(id).length){
+      log("Detach it from the board before removing it from the toolbox.", "err");
+      return;
+    }
+    delete specs[id];
+    customOrder = customOrder.filter(function(x){ return x !== id; });
+    persistCustomSpecs();
+    renderToolbox();
+  }
+
+  /* ---------- api hints ---------- */
+  var apiHints = document.getElementById("apiHints");
+
+  /* ---------- auto-edit setup() on attach/detach ---------- */
+  var codeEl = document.getElementById("code");
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+
+  // Locates the body of "function setup() { ... }" by brace-matching from the
+  // first "{" after the header, so nested braces inside setup() don't confuse it.
+  function findSetupBlock(code){
+    var m = /function\s+setup\s*\(\s*\)\s*\{/.exec(code);
+    if (!m) return null;
+    var braceStart = m.index + m[0].length - 1;
+    var depth = 0;
+    for (var i = braceStart; i < code.length; i++){
+      if (code[i] === "{") depth++;
+      else if (code[i] === "}"){
+        depth--;
+        if (depth === 0) return { bodyStart: braceStart + 1, bodyEnd: i };
+      }
+    }
+    return null;
+  }
+
+  function addInitCall(bind, edgeName){
+    var code = codeEl.value;
+    var callLine = bind + ".Init(" + edgeName + ");";
+    var block = findSetupBlock(code);
+    if (!block){
+      codeEl.value = "function setup() {\n  " + callLine + "\n}\n\n" + code;
+      return;
+    }
+    var body = code.slice(block.bodyStart, block.bodyEnd);
+    if (new RegExp("\\b" + escapeRegExp(bind) + "\\s*\\.\\s*Init\\s*\\(").test(body)) return;
+    var indentMatch = /\n([ \t]+)\S/.exec(body);
+    var indent = indentMatch ? indentMatch[1] : "  ";
+    var newBody = body.replace(/\s*$/, "\n" + indent + callLine + "\n");
+    codeEl.value = code.slice(0, block.bodyStart) + newBody + code.slice(block.bodyEnd);
+  }
+
+  function removeInitCall(bind){
+    var re = new RegExp("^[ \\t]*" + escapeRegExp(bind) + "\\s*\\.\\s*Init\\([^;]*\\);?[ \\t]*\\n?", "m");
+    codeEl.value = codeEl.value.replace(re, "");
+  }
+
+  /* ---------- console ---------- */
+  var consoleEl = document.getElementById("consoleLog");
+  function log(msg, cls){
+    var line = document.createElement("div");
+    if (cls) line.className = cls;
+    line.textContent = msg;
+    consoleEl.appendChild(line);
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+  }
+  function clearLog(){ consoleEl.innerHTML = ""; }
+
+  /* ---------- binding names ---------- */
+  // A component instance's binding name in the code editor: the bare type
+  // name if it's the only instance of that type on the whole board, otherwise
+  // Type_Edge (with a numeric suffix if that's still taken — e.g. a custom
+  // module with two of the same part). Decided once at attach time and never
+  // changed afterward, so code already written against a binding never goes stale.
+  function bindNameTaken(name){
+    var taken = false;
+    forEachInstance(function(inst){ if (inst.bind === name) taken = true; });
+    return taken;
+  }
+  function bindingName(type, edgeName){
+    var otherOfType = false;
+    forEachInstance(function(inst){ if (inst.type === type) otherOfType = true; });
+    var base = otherOfType ? (type + "_" + edgeName) : type;
+    if (!bindNameTaken(base)) return base;
+    var n = 2;
+    while (bindNameTaken(base + n)) n++;
+    return base + n;
+  }
+
+  /* ---------- board render (dynamic) ---------- */
+  function renderAll(){
+    updateToolboxWhere();
+
+    EDGES.forEach(function(e){
+      var bundle = slots[e.name];
+      var used = pinsUsed(e.name);
+      var full = used >= EDGE_PINS;
+      e.zoneEl.dataset.empty = bundle ? "false" : "true";
+      edgeDetachEls[e.name].hidden = !bundle;
+      moduleLabelEls[e.name].textContent = bundle && bundle.children.length > 1 ? bundle.label : "";
+      pinUsageEls[e.name].textContent = used + "/" + EDGE_PINS + " pins";
+      pinUsageEls[e.name].classList.toggle("full", full);
+      var i2cN = i2cCount(e.name);
+      i2cUsageEls[e.name].textContent = i2cN ? ("I2C x" + i2cN) : "";
+
+      var grid = e.gridEl;
+      var seen = {};
+      (bundle ? bundle.children : []).forEach(function(inst){
+        seen[inst.id] = true;
+        var def = COMPONENTS[inst.type];
+        var chipEl = grid.querySelector('[data-id="'+inst.id+'"]');
+        if (!chipEl){
+          chipEl = document.createElement("div");
+          chipEl.className = "mod-chip" + (inst.usesI2C ? " i2c-mod" : "");
+          chipEl.dataset.id = inst.id;
+          chipEl.title = inst.type;
+          var iconHolder = document.createElement("div");
+          iconHolder.className = "icon-holder";
+          chipEl.appendChild(iconHolder);
+          var bindInput = document.createElement("input");
+          bindInput.className = "bind-input";
+          bindInput.type = "text";
+          bindInput.spellcheck = false;
+          bindInput.autocomplete = "off";
+          bindInput.value = inst.bind;
+          bindInput.title = "Click to rename this part's binding in the code";
+          bindInput.addEventListener("pointerdown", function(ev){ ev.stopPropagation(); });
+          bindInput.addEventListener("click", function(ev){ ev.stopPropagation(); });
+          bindInput.addEventListener("keydown", function(ev){
+            if (ev.key === "Enter"){ ev.preventDefault(); bindInput.blur(); }
+            else if (ev.key === "Escape"){ ev.preventDefault(); bindInput.value = inst.bind; bindInput.blur(); }
+          });
+          bindInput.addEventListener("blur", function(){ renameBind(inst.id, bindInput.value); });
+          chipEl.appendChild(bindInput);
+          grid.appendChild(chipEl);
+          wireInteractive(chipEl, e.name, inst);
+        }
+        chipEl.querySelector(".icon-holder").innerHTML = def.renderIcon(inst.state);
+        var bindInputEl = chipEl.querySelector(".bind-input");
+        if (document.activeElement !== bindInputEl) bindInputEl.value = inst.bind;
+      });
+      Array.prototype.slice.call(grid.children).forEach(function(chipEl){
+        if (!seen[chipEl.dataset.id]) chipEl.remove();
+      });
+    });
+  }
+
+  function detachEdge(edgeName){
+    var bundle = slots[edgeName];
+    if (!bundle) return;
+    bundle.children.forEach(function(inst){ removeInitCall(inst.bind); });
+    slots[edgeName] = null;
+    renderAll();
+    buildApiHints();
+    log("Detached " + bundle.label + " from " + edgeName.replace(/([A-Z])/g," $1").trim() + ".", "dim");
+  }
+
+  // Commits an edit to a part's binding name: validates it, rewrites every
+  // whole-word use of the old name in the code editor (including the
+  // auto-inserted Init() call), and reverts silently if the name is invalid
+  // or already taken by another attached part.
+  function renameBind(id, rawName){
+    var found = findInstance(id);
+    if (!found) return;
+    var inst = found.inst;
+    var name = rawName.trim();
+    var oldName = inst.bind;
+    if (name === oldName){ return; }
+    var valid = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) && name !== "setup" && name !== "loop";
+    if (valid && bindNameTaken(name)) valid = false;
+    if (!valid){
+      log("Can't rename to \"" + name + "\" — must be a unique identifier.", "err");
+      renderAll();
+      return;
+    }
+    codeEl.value = codeEl.value.replace(new RegExp("\\b" + escapeRegExp(oldName) + "\\b", "g"), name);
+    inst.bind = name;
+    log("Renamed " + oldName + " to " + name + " in the code.", "ok");
+    buildApiHints();
+    renderAll();
+  }
+
+  function wireInteractive(chipEl, edgeName, inst){
+    if (inst.type === "AlphaButton"){
+      var press = function(down){ inst.state.pressed = down; renderAll(); };
+      chipEl.addEventListener("pointerdown", function(ev){ if (ev.target.closest(".bind-input")) return; press(true); });
+      chipEl.addEventListener("pointerup", function(){ press(false); });
+      chipEl.addEventListener("pointerleave", function(){ press(false); });
+    }
+    if (inst.type === "AlphaDial"){
+      var dragging = false;
+      chipEl.addEventListener("pointerdown", function(ev){
+        if (ev.target.closest(".bind-input")) return;
+        dragging = true; chipEl.setPointerCapture(ev.pointerId);
+      });
+      chipEl.addEventListener("pointermove", function(ev){
+        if (!dragging) return;
+        var rect = chipEl.getBoundingClientRect();
+        var cx0 = rect.left + rect.width/2, cy0 = rect.top + rect.height/2;
+        var ang = Math.atan2(ev.clientY - cy0, ev.clientX - cx0) * 180/Math.PI;
+        var pct = Math.max(0, Math.min(100, Math.round(((ang + 180) / 360) * 100)));
+        inst.state.value = pct;
+        renderAll();
+      });
+      chipEl.addEventListener("pointerup", function(){ dragging = false; });
+    }
+    if (inst.type === "AlphaJoystick"){
+      var jdragging = false;
+      chipEl.addEventListener("pointerdown", function(ev){
+        if (ev.target.closest(".bind-input")) return;
+        jdragging = true; chipEl.setPointerCapture(ev.pointerId);
+      });
+      var moveJoy = function(ev){
+        var iconEl = chipEl.querySelector(".joy-icon");
+        if (!iconEl) return;
+        var rect = iconEl.getBoundingClientRect();
+        var px = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+        var py = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
+        inst.state.x = Math.round(px * 100);
+        inst.state.y = Math.round((1-py) * 100);
+        renderAll();
+      };
+      chipEl.addEventListener("pointermove", function(ev){ if (jdragging) moveJoy(ev); });
+      chipEl.addEventListener("pointerup", function(){ jdragging = false; });
+    }
+  }
+
+  /* ---------- drag from toolbox to board ---------- */
+  var ghost = null;
+  var dragSpecId = null;
+
+  function canDrop(edgeName){
+    return !slots[edgeName];
+  }
+
+  function startDrag(specId, x, y){
+    dragSpecId = specId;
+    ghost = document.createElement("div");
+    ghost.className = "ghost";
+    ghost.innerHTML = iconForSpec(specs[specId]);
+    document.body.appendChild(ghost);
+    moveGhost(x, y);
+  }
+  function moveGhost(x, y){
+    if (!ghost) return;
+    ghost.style.left = x + "px";
+    ghost.style.top = y + "px";
+    EDGES.forEach(function(e){
+      var r = e.zoneEl.getBoundingClientRect();
+      var inside = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      var ok = inside && canDrop(e.name);
+      e.zoneEl.classList.toggle("drag-over", inside);
+      e.zoneEl.classList.toggle("full", inside && !ok);
+    });
+  }
+  function endDrag(x, y){
+    if (!ghost) return;
+    var target = null;
+    EDGES.forEach(function(e){
+      var r = e.zoneEl.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && canDrop(e.name)) target = e;
+      e.zoneEl.classList.remove("drag-over");
+      e.zoneEl.classList.remove("full");
+    });
+    if (target){
+      var spec = specs[dragSpecId];
+      var children = spec.children.map(function(type){
+        var def = COMPONENTS[type];
+        return { id: nextId++, type: type, state: def.makeState(), bind: bindingName(type, target.name), pinCost: def.pinCost, usesI2C: def.usesI2C };
+      });
+      slots[target.name] = { specId: dragSpecId, label: spec.label, children: children };
+      children.forEach(function(inst){ addInitCall(inst.bind, target.name); });
+      var binds = children.map(function(c){ return c.bind + ".Init(" + target.name + ")"; }).join(", ");
+      log("Attached " + spec.label + " to " + target.name.replace(/([A-Z])/g," $1").trim() + " — added " + binds + " to setup().", "ok");
+    }
+    ghost.remove();
+    ghost = null; dragSpecId = null;
+    renderAll();
+    buildApiHints();
+  }
+
+  toolboxList.addEventListener("pointerdown", function(ev){
+    var card = ev.target.closest(".module-card");
+    if (!card || ev.target.closest(".del")) return;
+    startDrag(card.dataset.spec, ev.clientX, ev.clientY);
+    ev.preventDefault();
+  });
+  window.addEventListener("pointermove", function(ev){ if (ghost) moveGhost(ev.clientX, ev.clientY); });
+  window.addEventListener("pointerup", function(ev){ if (ghost) endDrag(ev.clientX, ev.clientY); });
+
+  /* ---------- api hints ---------- */
+  function buildApiHints(){
+    apiHints.innerHTML = "";
+    var any = false;
+    forEachInstance(function(inst){
+      any = true;
+      COMPONENTS[inst.type].api.forEach(function(sig){
+        var c = document.createElement("code");
+        if (inst.usesI2C) c.className = "i2c";
+        c.textContent = inst.bind + "." + sig;
+        apiHints.appendChild(c);
+      });
+    });
+    if (!any){
+      var c = document.createElement("code");
+      c.textContent = "Attach a module to an edge to see its calls here";
+      apiHints.appendChild(c);
+    }
+  }
+
+  /* ---------- module editor ---------- */
+  var editorPanel = document.getElementById("editorPanel");
+  var openEditorBtn = document.getElementById("openEditorBtn");
+  var editorPalette = document.getElementById("editorPalette");
+  var draftList = document.getElementById("draftList");
+  var editorPinLabel = document.getElementById("editorPinLabel");
+  var editorPinFill = document.getElementById("editorPinFill");
+  var editorI2cLabel = document.getElementById("editorI2cLabel");
+  var editorName = document.getElementById("editorName");
+  var editorSaveBtn = document.getElementById("editorSaveBtn");
+  var editorCancelBtn = document.getElementById("editorCancelBtn");
+  var draft = [];
+
+  function draftPins(){ return draft.reduce(function(sum,t){ return sum + (COMPONENTS[t].usesI2C?0:COMPONENTS[t].pinCost); }, 0); }
+  function draftI2c(){ return draft.filter(function(t){ return COMPONENTS[t].usesI2C; }).length; }
+
+  function renderEditorPalette(){
+    editorPalette.innerHTML = "";
+    COMPONENT_ORDER.forEach(function(type){
+      var def = COMPONENTS[type];
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "palette-btn";
+      var wouldFit = def.usesI2C || (draftPins() + def.pinCost <= EDGE_PINS);
+      btn.disabled = !wouldFit;
+      btn.innerHTML = '<span class="swatch-mini">'+def.renderIcon(def.makeState())+'</span><span>'+def.label+'</span>';
+      btn.addEventListener("click", function(){
+        if (!wouldFit) return;
+        draft.push(type);
+        renderEditor();
+      });
+      editorPalette.appendChild(btn);
+    });
+  }
+
+  function renderDraft(){
+    draftList.innerHTML = "";
+    draft.forEach(function(type, idx){
+      var chip = document.createElement("div");
+      chip.className = "draft-chip";
+      var removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.textContent = "×";
+      removeBtn.title = "Remove";
+      removeBtn.addEventListener("click", function(){ draft.splice(idx,1); renderEditor(); });
+      chip.textContent = COMPONENTS[type].label + " ";
+      chip.appendChild(removeBtn);
+      draftList.appendChild(chip);
+    });
+  }
+
+  function renderEditorBar(){
+    var pins = draftPins(), i2c = draftI2c();
+    editorPinLabel.textContent = pins + "/" + EDGE_PINS + " pins";
+    var pct = Math.min(100, (pins/EDGE_PINS)*100);
+    editorPinFill.style.width = pct + "%";
+    editorPinFill.classList.toggle("over", pins >= EDGE_PINS);
+    editorI2cLabel.textContent = i2c ? ("I2C x" + i2c) : "";
+    editorSaveBtn.disabled = draft.length === 0 || !editorName.value.trim();
+  }
+
+  function renderEditor(){
+    renderEditorPalette();
+    renderDraft();
+    renderEditorBar();
+  }
+
+  function openEditor(){
+    draft = [];
+    editorName.value = "";
+    editorPanel.hidden = false;
+    renderEditor();
+    editorPanel.scrollIntoView({ behavior:"smooth", block:"nearest" });
+  }
+  function closeEditor(){
+    editorPanel.hidden = true;
+    draft = [];
+  }
+
+  openEditorBtn.addEventListener("click", openEditor);
+  editorCancelBtn.addEventListener("click", closeEditor);
+  editorName.addEventListener("input", renderEditorBar);
+  editorSaveBtn.addEventListener("click", function(){
+    var name = editorName.value.trim();
+    if (!draft.length || !name) return;
+    var id = "custom_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+    specs[id] = { id:id, kind:"custom", label:name, children:draft.slice() };
+    customOrder.push(id);
+    persistCustomSpecs();
+    renderToolbox();
+    log("Saved \"" + name + "\" to the toolbox (" + specPinCost(specs[id]) + "/" + EDGE_PINS + " pins" + (specUsesI2C(specs[id]) ? " + I2C" : "") + ").", "ok");
+    closeEditor();
+  });
+
+  /* ---------- run / stop ---------- */
+  var runBtn = document.getElementById("runBtn");
+  var resetBtn = document.getElementById("resetBtn");
+  var statusPill = document.getElementById("statusPill");
+  var timer = null;
+
+  function setRunning(on){
+    runBtn.textContent = on ? "Stop" : "Run";
+    runBtn.classList.toggle("running", on);
+    statusPill.textContent = on ? "running" : "idle";
+    statusPill.classList.toggle("live", on);
+  }
+
+  function stopSim(){
+    if (timer) clearInterval(timer);
+    timer = null;
+    setRunning(false);
+  }
+
+  function runSim(){
+    clearLog();
+    var runtime = {
+      Top:"Top", UpperRight:"UpperRight", LowerRight:"LowerRight", Bottom:"Bottom", LowerLeft:"LowerLeft", UpperLeft:"UpperLeft",
+      Serial: { println:function(m){ log(String(m)); }, print:function(m){ log(String(m)); } }
+    };
+
+    forEachInstance(function(inst, edgeName){
+      var def = COMPONENTS[inst.type];
+      var ctx = {
+        state: inst.state,
+        refresh: renderAll,
+        checkEdge: function(type, actual, claimed){
+          if (claimed !== actual){
+            throw new Error(type + ".Init(" + claimed + ") doesn't match where it's plugged in (" + actual + ").");
+          }
+        }
+      };
+      runtime[inst.bind] = def.runtime(edgeName, ctx);
+    });
+
+    var code = document.getElementById("code").value;
+    var userFns;
+    try {
+      var factory = Function.apply(null, Object.keys(runtime).concat([code + "\n;return { setup: (typeof setup==='function')?setup:null, loop: (typeof loop==='function')?loop:null };"]));
+      userFns = factory.apply(null, Object.keys(runtime).map(function(k){ return runtime[k]; }));
+    } catch (err){
+      log("Build error: " + err.message, "err");
+      return;
+    }
+    if (!userFns.loop){
+      log("No loop() found — nothing to run continuously, but setup() will still fire once.", "dim");
+    }
+    try {
+      if (userFns.setup) userFns.setup();
+      log("Simulation started.", "ok");
+    } catch (err){
+      log("Runtime error in setup(): " + err.message, "err");
+      return;
+    }
+    setRunning(true);
+    timer = setInterval(function(){
+      try {
+        if (userFns.loop) userFns.loop();
+      } catch (err){
+        log("Runtime error in loop(): " + err.message, "err");
+        stopSim();
+      }
+    }, 200);
+  }
+
+  runBtn.addEventListener("click", function(){
+    if (timer) stopSim(); else runSim();
+  });
+  resetBtn.addEventListener("click", function(){
+    stopSim();
+    for (var name in slots){
+      if (slots[name]) slots[name].children.forEach(function(inst){ removeInitCall(inst.bind); });
+    }
+    slots = { Top:null, UpperRight:null, LowerRight:null, Bottom:null, LowerLeft:null, UpperLeft:null };
+    codeEl.value = "function setup() {\n\n}\n\nfunction loop() {\n\n}";
+    renderAll();
+    buildApiHints();
+    clearLog();
+    log("Board reset. Saved custom modules in the toolbox were kept.", "dim");
+  });
+
+  /* ---------- boot: preset example ---------- */
+  function seed(type, edgeName){
+    var def = COMPONENTS[type];
+    var bind = bindingName(type, edgeName);
+    slots[edgeName] = { specId: type, label: def.label, children: [
+      { id: nextId++, type: type, state: def.makeState(), bind: bind, pinCost: def.pinCost, usesI2C: def.usesI2C }
+    ]};
+  }
+  seed("AlphaDial", "UpperLeft");
+  seed("AlphaServo", "Top");
+  seed("AlphaButton", "Bottom");
+  seed("AlphaLED", "UpperRight");
+  document.getElementById("code").value = EXAMPLE;
+  renderToolbox();
+  renderAll();
+  buildApiHints();
+  log("Loaded: The Reach. 6 edges available, one module each — press Run.", "dim");
+})();
+</script>
+
+</body>
+</html>
