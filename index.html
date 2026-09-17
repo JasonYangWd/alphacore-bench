@@ -685,7 +685,7 @@
       <div class="toolbox-head">
         <h2>Toolbox</h2>
       </div>
-      <p class="sub">Drag a part onto any populated edge, or build a composite module first. Each edge holds exactly one module.</p>
+      <p class="sub">Drag a part onto any edge, or build a composite module first. Each edge holds up to 4 GPIO pins' worth of parts.</p>
       <button class="btn" id="openEditorBtn" style="width:100%;margin-bottom:12px;">+ Build module</button>
       <div class="toolbox-list" id="toolboxList"></div>
     </section>
@@ -695,7 +695,7 @@
       <div class="board-stage" id="boardStage">
         <svg viewBox="0 0 600 600" id="boardSvg"></svg>
       </div>
-      <p class="board-caption">All 6 hexagon edges are pluggable here, each an identical 7-pin connector: power plus 4 generic GPIO pins (DO/DI/PWM/ADC), and every edge also reaches the shared I2C bus. Note: the real AlphaCore board only wires up 4 of these 6 (the ESP32's GPIO budget runs out) &mdash; the extra two are a bench-only sandbox for combining more modules.</p>
+      <p class="board-caption">All 6 hexagon edges are wired identically on the real AlphaCore board (ESP32-S3): power plus 4 GPIO pins &mdash; 3 are ADC-capable (DO/DI/PWM/ADC), 1 is digital-only (DO/DI/PWM, no ADC) &mdash; and every edge also reaches the shared I2C bus, which doesn't use up any of the 4 pins.</p>
     </section>
 
     <section class="panel notebook" aria-label="Code notebook">
@@ -713,7 +713,7 @@
 
   <section class="panel editor-panel" id="editorPanel" aria-label="Module editor" hidden>
     <h2>Module Editor</h2>
-    <p class="sub">Combine parts into one composite module (up to 4 GPIO pins total; I2C parts don't count against that budget), then save it to the toolbox.</p>
+    <p class="sub">Combine parts into one composite module (up to 4 GPIO pins total, of which at most 3 can need ADC; I2C parts don't count against that budget), then save it to the toolbox.</p>
     <div class="editor-row">
       <div class="palette" id="editorPalette"></div>
       <div class="draft-col">
@@ -738,6 +738,7 @@
   "use strict";
 
   var EDGE_PINS = 4;
+  var EDGE_ADC_PINS = 3; // of the 4, only 3 are ADC-capable — the 4th is DO/DI/PWM only
   var STORAGE_KEY = "alphacoreBench.customModules";
 
   /* ---------- geometry ---------- */
@@ -770,11 +771,15 @@
   var EDGES = ALL_SIDES;
 
   /* ---------- component library ---------- */
-  // pinCost: how many of an edge's 4 generic GPIO pins one of these takes.
+  // pinCost: how many of an edge's 4 GPIO pins one of these takes.
+  // adcNeeded: how many of those pins must be one of the edge's 3 ADC-capable
+  // pins (pin 7 on every edge is DO/DI/PWM only, no ADC — see
+  // 07_AlphaCore/AlphaCore_Pin_Layout_Tables.md). DO/DI/PWM-only needs can
+  // land on any pin, ADC-capable or not.
   // usesI2C: rides the shared bus instead — doesn't touch the GPIO budget.
   var COMPONENTS = {
     AlphaLED: {
-      label:"AlphaLED", kind:"LED &middot; 1 GPIO (DO)", pinCost:1, usesI2C:false,
+      label:"AlphaLED", kind:"LED &middot; 1 GPIO (DO)", pinCost:1, adcNeeded:0, usesI2C:false,
       api:["Init(edge)","On()","Off()","Toggle()"],
       makeState:function(){ return { on:false }; },
       renderIcon:function(state){ return '<div class="led-bulb'+(state.on?' on':'')+'"></div>'; },
@@ -788,7 +793,7 @@
       }
     },
     AlphaBuzzer: {
-      label:"AlphaBuzzer", kind:"Piezo &middot; 1 GPIO (DO)", pinCost:1, usesI2C:false,
+      label:"AlphaBuzzer", kind:"Piezo &middot; 1 GPIO (DO)", pinCost:1, adcNeeded:0, usesI2C:false,
       api:["Init(edge)","Beep(ms)","On()","Off()"],
       makeState:function(){ return { on:false, beeping:false }; },
       renderIcon:function(state){
@@ -808,7 +813,7 @@
       }
     },
     AlphaButton: {
-      label:"AlphaButton", kind:"Momentary &middot; 1 GPIO (DI)", pinCost:1, usesI2C:false,
+      label:"AlphaButton", kind:"Momentary &middot; 1 GPIO (DI)", pinCost:1, adcNeeded:0, usesI2C:false,
       api:["Init(edge)","IsPressed()"],
       makeState:function(){ return { pressed:false }; },
       renderIcon:function(state){ return '<div class="btn-icon'+(state.pressed?' pressed':'')+'" data-hold="1"></div>'; },
@@ -820,7 +825,7 @@
       }
     },
     AlphaDial: {
-      label:"AlphaDial", kind:"Potentiometer &middot; 1 GPIO (ADC)", pinCost:1, usesI2C:false,
+      label:"AlphaDial", kind:"Potentiometer &middot; 1 GPIO (ADC)", pinCost:1, adcNeeded:1, usesI2C:false,
       api:["Init(edge)","Read()"],
       makeState:function(){ return { value:20 }; },
       renderIcon:function(state){ return '<div class="dial-icon" data-dial="1" style="--pct:'+state.value+'"><div class="knob"></div></div>'; },
@@ -832,7 +837,7 @@
       }
     },
     AlphaServo: {
-      label:"AlphaServo", kind:"Servo &middot; 1 GPIO (PWM)", pinCost:1, usesI2C:false,
+      label:"AlphaServo", kind:"Servo &middot; 1 GPIO (PWM)", pinCost:1, adcNeeded:0, usesI2C:false,
       api:["Init(edge)","MoveTo(deg)","Center()","Angle()"],
       makeState:function(){ return { angle:90 }; },
       renderIcon:function(state){
@@ -848,7 +853,7 @@
       }
     },
     AlphaLight: {
-      label:"AlphaLight", kind:"Photodiode/LDR &middot; 1 GPIO (ADC)", pinCost:1, usesI2C:false,
+      label:"AlphaLight", kind:"Photodiode/LDR &middot; 1 GPIO (ADC)", pinCost:1, adcNeeded:1, usesI2C:false,
       api:["Init(edge)","Read()"],
       makeState:function(){ return { value:40, target:40 }; },
       renderIcon:function(state){
@@ -884,7 +889,7 @@
       }
     },
     AlphaMotor: {
-      label:"AlphaMotor", kind:"Motor &middot; 2 GPIO (PWM+ADC)", pinCost:2, usesI2C:false,
+      label:"AlphaMotor", kind:"Motor &middot; 2 GPIO (PWM+ADC)", pinCost:2, adcNeeded:1, usesI2C:false,
       api:["Init(edge)","SetSpeed(pct)","Stop()","Feedback()"],
       makeState:function(){ return { speed:0, feedback:0 }; },
       renderIcon:function(state){
@@ -908,7 +913,7 @@
       }
     },
     AlphaJoystick: {
-      label:"AlphaJoystick", kind:"Joystick &middot; 2 GPIO (ADC x2)", pinCost:2, usesI2C:false,
+      label:"AlphaJoystick", kind:"Joystick &middot; 2 GPIO (ADC x2)", pinCost:2, adcNeeded:2, usesI2C:false,
       api:["Init(edge)","X()","Y()"],
       makeState:function(){ return { x:50, y:50 }; },
       renderIcon:function(state){
@@ -925,7 +930,7 @@
       }
     },
     AlphaMotion: {
-      label:"AlphaMotion", kind:"PIR Motion &middot; 1 GPIO (DI)", pinCost:1, usesI2C:false,
+      label:"AlphaMotion", kind:"PIR Motion &middot; 1 GPIO (DI)", pinCost:1, adcNeeded:0, usesI2C:false,
       api:["Init(edge)","Detected()"],
       makeState:function(){ return { active:false }; },
       renderIcon:function(state){ return '<div class="motion-icon'+(state.active?' active':'')+'" data-motion="1"><div class="lens"></div><div class="ring"></div></div>'; },
@@ -937,7 +942,7 @@
       }
     },
     AlphaRelay: {
-      label:"AlphaRelay", kind:"Relay &middot; 1 GPIO (DO)", pinCost:1, usesI2C:false,
+      label:"AlphaRelay", kind:"Relay &middot; 1 GPIO (DO)", pinCost:1, adcNeeded:0, usesI2C:false,
       api:["Init(edge)","On()","Off()","Toggle()","IsOn()"],
       makeState:function(){ return { on:false, clicked:false }; },
       renderIcon:function(state){ return '<div class="relay-icon'+(state.on?' on':'')+(state.clicked?' click':'')+'"><div class="paddle"></div></div>'; },
@@ -957,7 +962,7 @@
       }
     },
     AlphaDisplay: {
-      label:"AlphaDisplay", kind:"LCD/OLED &middot; I2C bus", pinCost:0, usesI2C:true,
+      label:"AlphaDisplay", kind:"LCD/OLED &middot; I2C bus", pinCost:0, adcNeeded:0, usesI2C:true,
       api:["Init(edge)","Print(text)","Clear()"],
       makeState:function(){ return { text:"" }; },
       renderIcon:function(state){
@@ -987,6 +992,9 @@
 
   function specPinCost(spec){
     return spec.children.reduce(function(sum, t){ return sum + (COMPONENTS[t].usesI2C ? 0 : COMPONENTS[t].pinCost); }, 0);
+  }
+  function specAdcNeeded(spec){
+    return spec.children.reduce(function(sum, t){ return sum + (COMPONENTS[t].adcNeeded||0); }, 0);
   }
   function specUsesI2C(spec){
     return spec.children.some(function(t){ return COMPONENTS[t].usesI2C; });
@@ -1029,6 +1037,11 @@
     var bundle = slots[edgeName];
     if (!bundle) return 0;
     return bundle.children.reduce(function(sum, inst){ return sum + (inst.usesI2C ? 0 : inst.pinCost); }, 0);
+  }
+  function adcPinsUsed(edgeName){
+    var bundle = slots[edgeName];
+    if (!bundle) return 0;
+    return bundle.children.reduce(function(sum, inst){ return sum + (inst.adcNeeded||0); }, 0);
   }
   function i2cCount(edgeName){
     var bundle = slots[edgeName];
@@ -1217,8 +1230,8 @@
     allIds.forEach(function(id){
       var spec = specs[id];
       if (!spec) return;
-      var pins = specPinCost(spec), i2c = specUsesI2C(spec);
-      var costLabel = (pins ? (pins + " pin" + (pins>1?"s":"")) : "") + (pins && i2c ? " + " : "") + (i2c ? "I2C" : "");
+      var pins = specPinCost(spec), i2c = specUsesI2C(spec), adc = specAdcNeeded(spec);
+      var costLabel = (pins ? (pins + " pin" + (pins>1?"s":"")) : "") + (pins && i2c ? " + " : "") + (i2c ? "I2C" : "") + (adc ? " (" + adc + " ADC)" : "");
       var card = document.createElement("div");
       card.className = "module-card draggable";
       card.tabIndex = 0;
@@ -1353,11 +1366,12 @@
     EDGES.forEach(function(e){
       var bundle = slots[e.name];
       var used = pinsUsed(e.name);
-      var full = used >= EDGE_PINS;
+      var adcUsed = adcPinsUsed(e.name);
+      var full = used >= EDGE_PINS || adcUsed >= EDGE_ADC_PINS;
       e.zoneEl.dataset.empty = bundle ? "false" : "true";
       edgeDetachEls[e.name].hidden = !bundle;
       moduleLabelEls[e.name].textContent = bundle && bundle.children.length > 1 ? bundleLabel(bundle) : "";
-      pinUsageEls[e.name].textContent = used + "/" + EDGE_PINS + " pins";
+      pinUsageEls[e.name].textContent = used + "/" + EDGE_PINS + " pins" + (adcUsed ? " (" + adcUsed + "/" + EDGE_ADC_PINS + " ADC)" : "");
       pinUsageEls[e.name].classList.toggle("full", full);
       var i2cN = i2cCount(e.name);
       i2cUsageEls[e.name].textContent = i2cN ? ("I2C x" + i2cN) : "";
@@ -1500,7 +1514,8 @@
     if (!dragSpecId) return false;
     var spec = specs[dragSpecId];
     if (!spec) return false;
-    return specPinCost(spec) <= (EDGE_PINS - pinsUsed(edgeName));
+    return specPinCost(spec) <= (EDGE_PINS - pinsUsed(edgeName))
+      && specAdcNeeded(spec) <= (EDGE_ADC_PINS - adcPinsUsed(edgeName));
   }
 
   function startDrag(specId, x, y){
@@ -1536,7 +1551,7 @@
       var spec = specs[dragSpecId];
       var children = spec.children.map(function(type){
         var def = COMPONENTS[type];
-        return { id: nextId++, type: type, state: def.makeState(), bind: bindingName(type, target.name), pinCost: def.pinCost, usesI2C: def.usesI2C };
+        return { id: nextId++, type: type, state: def.makeState(), bind: bindingName(type, target.name), pinCost: def.pinCost, adcNeeded: def.adcNeeded||0, usesI2C: def.usesI2C };
       });
       var bundle = slots[target.name];
       if (bundle){
@@ -1598,6 +1613,7 @@
   var draft = [];
 
   function draftPins(){ return draft.reduce(function(sum,t){ return sum + (COMPONENTS[t].usesI2C?0:COMPONENTS[t].pinCost); }, 0); }
+  function draftAdc(){ return draft.reduce(function(sum,t){ return sum + (COMPONENTS[t].adcNeeded||0); }, 0); }
   function draftI2c(){ return draft.filter(function(t){ return COMPONENTS[t].usesI2C; }).length; }
 
   function renderEditorPalette(){
@@ -1607,7 +1623,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "palette-btn";
-      var wouldFit = def.usesI2C || (draftPins() + def.pinCost <= EDGE_PINS);
+      var wouldFit = def.usesI2C || (draftPins() + def.pinCost <= EDGE_PINS && draftAdc() + (def.adcNeeded||0) <= EDGE_ADC_PINS);
       btn.disabled = !wouldFit;
       btn.innerHTML = '<span class="swatch-mini">'+def.renderIcon(def.makeState())+'</span><span>'+def.label+'</span>';
       btn.addEventListener("click", function(){
@@ -1636,11 +1652,11 @@
   }
 
   function renderEditorBar(){
-    var pins = draftPins(), i2c = draftI2c();
-    editorPinLabel.textContent = pins + "/" + EDGE_PINS + " pins";
+    var pins = draftPins(), i2c = draftI2c(), adc = draftAdc();
+    editorPinLabel.textContent = pins + "/" + EDGE_PINS + " pins" + (adc ? " (" + adc + "/" + EDGE_ADC_PINS + " ADC)" : "");
     var pct = Math.min(100, (pins/EDGE_PINS)*100);
     editorPinFill.style.width = pct + "%";
-    editorPinFill.classList.toggle("over", pins >= EDGE_PINS);
+    editorPinFill.classList.toggle("over", pins >= EDGE_PINS || adc >= EDGE_ADC_PINS);
     editorI2cLabel.textContent = i2c ? ("I2C x" + i2c) : "";
     editorSaveBtn.disabled = draft.length === 0 || !editorName.value.trim();
   }
@@ -1769,7 +1785,7 @@
     var def = COMPONENTS[type];
     var bind = bindingName(type, edgeName);
     slots[edgeName] = { specIds: [type], children: [
-      { id: nextId++, type: type, state: def.makeState(), bind: bind, pinCost: def.pinCost, usesI2C: def.usesI2C }
+      { id: nextId++, type: type, state: def.makeState(), bind: bind, pinCost: def.pinCost, adcNeeded: def.adcNeeded||0, usesI2C: def.usesI2C }
     ]};
   }
   seed("AlphaDial", "UpperLeft");
