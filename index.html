@@ -93,6 +93,17 @@
     flex-wrap:wrap;
   }
   .brand{ display:flex; align-items:baseline; gap:12px; }
+  .brand .version{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.68rem;
+    letter-spacing:0.04em;
+    padding:2px 8px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    color:var(--muted);
+    white-space:nowrap;
+    align-self:center;
+  }
   .brand .mark{
     font-family:"Big Shoulders Display", sans-serif;
     font-weight:800;
@@ -733,6 +744,7 @@
   <header class="top">
     <div class="brand">
       <div class="mark">Alpha<em>Core</em> Bench</div>
+      <span class="version">v1.0.0</span>
       <div class="tag">One ESP32 hub, six pluggable edges. Drop as many modules on an edge as fit its 4 GPIO pins &mdash; or build a multi-part module in the editor.</div>
     </div>
     <div class="status-pill" id="statusPill">idle</div>
