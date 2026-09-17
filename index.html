@@ -220,15 +220,20 @@
   .module-card .where{
     font-size:0.72rem; color:var(--muted);
   }
-  .module-card .del{
-    position:absolute; top:-7px; right:-7px;
+  .module-card .del, .module-card .edit, .module-card .export{
+    position:absolute; top:-7px;
     width:18px; height:18px; border-radius:50%;
     background:var(--panel); border:1px solid var(--line);
     color:var(--muted); font-size:11px; line-height:1;
     display:flex; align-items:center; justify-content:center;
     cursor:pointer;
   }
+  .module-card .del{ right:-7px; }
+  .module-card .edit{ right:15px; font-size:10px; }
+  .module-card .export{ right:37px; font-size:12px; }
   .module-card .del:hover{ color:var(--danger); border-color:var(--danger); }
+  .module-card .edit:hover{ color:var(--copper); border-color:var(--copper); }
+  .module-card .export:hover{ color:var(--good); border-color:var(--good); }
 
   /* ---- Module editor ---- */
   .modal-overlay{
@@ -273,24 +278,58 @@
     display:flex; align-items:center; justify-content:center;
   }
   .draft-col{ flex:1 1 240px; display:flex; flex-direction:column; gap:10px; min-width:220px; }
+  /* Mirrors the board's own .mod-grid/.mod-chip so a module under
+     construction looks like what it'll become once it's dropped on an
+     edge: a small grid of part chips, each with its own name field. */
   .draft-list{
-    display:flex; flex-wrap:wrap; align-content:flex-start; gap:6px;
-    min-height:44px; border:1px dashed var(--line); border-radius:8px; padding:8px;
+    display:grid;
+    grid-template-columns:repeat(2, 64px);
+    grid-auto-rows:min-content;
+    gap:8px;
+    justify-content:start;
+    align-content:start;
+    min-height:52px;
+    border:1px dashed var(--line); border-radius:8px; padding:10px;
   }
   .draft-list:empty::after{
     content:"Click parts on the left to add them here";
     font-size:0.72rem; color:var(--muted);
+    grid-column:1 / -1;
   }
   .draft-chip{
-    display:flex; align-items:center; gap:4px;
-    background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
-    padding:3px 4px 3px 7px;
-    font-family:"IBM Plex Mono", monospace; font-size:0.7rem;
+    position:relative;
+    width:64px;
+    border-radius:8px;
+    background:var(--board-face-2);
+    border:1px solid var(--copper);
+    display:flex; flex-direction:column; align-items:center;
+    gap:3px;
+    padding:5px 3px 4px;
   }
-  .draft-chip button{
-    border:none; background:none; color:var(--muted); cursor:pointer; font-size:12px; padding:2px;
+  .draft-chip .icon-holder{ display:flex; align-items:center; justify-content:center; height:24px; }
+  .draft-chip .name-input{
+    width:100%;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.56rem;
+    text-align:center;
+    color:#EAF3EF;
+    background:transparent;
+    border:none;
+    border-bottom:1px dashed transparent;
+    padding:0;
+    outline:none;
   }
-  .draft-chip button:hover{ color:var(--danger); }
+  .draft-chip .name-input::placeholder{ color:var(--muted); opacity:0.8; }
+  .draft-chip .name-input:hover, .draft-chip .name-input:focus{ border-bottom-color:var(--copper); }
+  .draft-chip .remove{
+    position:absolute; top:-7px; right:-7px;
+    width:16px; height:16px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line);
+    color:var(--muted); font-size:10px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .draft-chip .remove:hover{ color:var(--danger); border-color:var(--danger); }
   .editor-bar{ display:flex; align-items:center; gap:10px; font-family:"IBM Plex Mono", monospace; font-size:0.74rem; color:var(--muted); }
   .editor-bar .track{
     flex:1; height:8px; border-radius:4px;
@@ -341,7 +380,7 @@
   .mod-grid{
     display:grid;
     grid-template-columns:repeat(2, 38px);
-    grid-auto-rows:40px;
+    grid-auto-rows:minmax(40px, auto);
     gap:4px;
     justify-content:center;
     align-content:start;
@@ -402,6 +441,30 @@
   }
   .mod-chip.i2c-mod{ border-color:var(--i2c); }
   .mod-chip .icon-holder{ display:flex; align-items:center; justify-content:center; height:24px; }
+  /* A compound (multi-part) module fills the whole edge placeholder --
+     spans all 4 pin cells of .mod-grid -- instead of squeezing into one.
+     A single-part chip still takes just one corner, unchanged above. */
+  .mod-chip.group-chip{
+    grid-column: span 2;
+    grid-row: span 2;
+    width:80px;
+    min-height:84px;
+    height:auto;
+    padding-top:6px;
+    gap:5px;
+  }
+  .mod-chip .icon-row{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:4px;
+    width:62px;
+  }
+  .mod-chip .icon-row .sub-icon{
+    display:flex; align-items:center; justify-content:center;
+    height:26px;
+    background:var(--panel-2);
+    border-radius:5px;
+  }
   .mod-chip .bind-input{
     width:34px;
     font-family:"IBM Plex Mono", monospace;
@@ -418,6 +481,7 @@
     outline:none;
   }
   .mod-chip .bind-input:hover, .mod-chip .bind-input:focus{ border-bottom-color:var(--copper); }
+  .mod-chip.group-chip .bind-input{ width:70px; font-size:0.58rem; }
   .mod-chip .bind-input.invalid{
     border-bottom-color:var(--danger);
     color:var(--danger);
@@ -744,7 +808,7 @@
   <header class="top">
     <div class="brand">
       <div class="mark">Alpha<em>Core</em> Bench</div>
-      <span class="version">v1.0.0</span>
+      <span class="version">v1.1.0</span>
       <div class="tag">One ESP32 hub, six pluggable edges. Drop as many modules on an edge as fit its 4 GPIO pins &mdash; or build a multi-part module in the editor.</div>
     </div>
     <div class="status-pill" id="statusPill">idle</div>
@@ -756,7 +820,9 @@
         <h2>Toolbox</h2>
       </div>
       <p class="sub">Drag a part onto any edge, or build a composite module first. Each edge holds up to 4 GPIO pins' worth of parts.</p>
-      <button class="btn" id="openEditorBtn" style="width:100%;margin-bottom:12px;">+ Build module</button>
+      <button class="btn" id="openEditorBtn" style="width:100%;margin-bottom:8px;">+ Build module</button>
+      <button class="btn" id="importModuleBtn" style="width:100%;margin-bottom:12px;">Import module&hellip;</button>
+      <input type="file" id="importModuleFileInput" accept="application/json,.json" hidden>
       <div class="toolbox-list" id="toolboxList"></div>
     </section>
 
@@ -792,8 +858,8 @@
     <section class="panel editor-panel" id="editorPanel" aria-label="Module editor" role="dialog" aria-modal="true">
       <div class="editor-panel-head">
         <div>
-          <h2>Module Editor</h2>
-          <p class="sub">Combine parts into one composite module (up to 4 GPIO pins total, of which at most 3 can need ADC; I2C parts don't count against that budget), then save it to the toolbox.</p>
+          <h2 id="editorTitle">Module Editor</h2>
+          <p class="sub" id="editorSub">Combine parts into one composite module (up to 4 GPIO pins total, of which at most 3 can need ADC; I2C parts don't count against that budget), then save it to the toolbox.</p>
         </div>
         <div class="editor-close" id="editorCloseBtn" title="Close">&times;</div>
       </div>
@@ -1088,16 +1154,21 @@
       var list = raw ? JSON.parse(raw) : [];
       list.forEach(function(s){
         if (!s || !s.id || !Array.isArray(s.children)) return;
-        var children = s.children.filter(function(t){ return !!COMPONENTS[t]; });
+        var children = [], childNames = [];
+        s.children.forEach(function(t, i){
+          if (!COMPONENTS[t]) return;
+          children.push(t);
+          childNames.push((Array.isArray(s.childNames) && s.childNames[i]) || "");
+        });
         if (!children.length) return;
-        specs[s.id] = { id:s.id, kind:"custom", label:String(s.label||"Custom module").slice(0,40), children:children };
+        specs[s.id] = { id:s.id, kind:"custom", label:String(s.label||"Custom module").slice(0,40), children:children, childNames:childNames };
         customOrder.push(s.id);
       });
     } catch (e){ /* localStorage unavailable (e.g. file:// origin) — start empty */ }
   }
   function persistCustomSpecs(){
     try {
-      var list = customOrder.map(function(id){ return { id:specs[id].id, label:specs[id].label, children:specs[id].children }; });
+      var list = customOrder.map(function(id){ return { id:specs[id].id, label:specs[id].label, children:specs[id].children, childNames:specs[id].childNames||[] }; });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
     } catch (e){ /* ignore — nothing to do if storage is unavailable */ }
   }
@@ -1118,7 +1189,11 @@
   function pinsUsed(edgeName){
     var bundle = slots[edgeName];
     if (!bundle) return 0;
-    return bundle.children.reduce(function(sum, inst){ return sum + (inst.usesI2C ? 0 : inst.pinCost); }, 0);
+    // inst.pinCost already excludes any I2C sub-parts' cost (see
+    // specPinCost/attachGroupInstance) — no need to re-gate on usesI2C here.
+    // (A gate here would wrongly zero a group instance's whole pinCost just
+    // because one of several sub-parts happens to be I2C.)
+    return bundle.children.reduce(function(sum, inst){ return sum + inst.pinCost; }, 0);
   }
   function adcPinsUsed(edgeName){
     var bundle = slots[edgeName];
@@ -1127,7 +1202,13 @@
   }
   function i2cCount(edgeName){
     var bundle = slots[edgeName];
-    return bundle ? bundle.children.filter(function(inst){ return inst.usesI2C; }).length : 0;
+    if (!bundle) return 0;
+    var n = 0;
+    bundle.children.forEach(function(inst){
+      if (inst.isGroup) n += inst.subs.filter(function(s){ return COMPONENTS[s.type].usesI2C; }).length;
+      else if (inst.usesI2C) n += 1;
+    });
+    return n;
   }
   function findInstance(id){
     for (var name in slots){
@@ -1145,6 +1226,10 @@
   function bundleLabel(bundle){
     var seen = {}, parts = [];
     bundle.children.forEach(function(inst){
+      if (inst.isGroup){
+        parts.push((specs[inst.specId] ? specs[inst.specId].label : inst.bind) + " (" + inst.bind + ")");
+        return;
+      }
       if (seen[inst.type]) return;
       seen[inst.type] = true;
       parts.push(COMPONENTS[inst.type].label);
@@ -1323,6 +1408,20 @@
         '<div class="swatch'+(multi?' multi':'')+'">'+iconForSpec(spec)+'</div>'+
         '<div class="meta"><div class="name">'+spec.label+' <span class="pincost'+(i2c && !pins?' i2c':'')+'">'+costLabel+'</span></div><div class="where"></div></div>';
       if (spec.kind === "custom"){
+        var exportBtn = document.createElement("div");
+        exportBtn.className = "export";
+        exportBtn.textContent = "⤓";
+        exportBtn.title = "Save this module to a file";
+        exportBtn.addEventListener("pointerdown", function(ev){ ev.stopPropagation(); });
+        exportBtn.addEventListener("click", function(ev){ ev.stopPropagation(); exportModuleSpec(id); });
+        card.appendChild(exportBtn);
+        var edit = document.createElement("div");
+        edit.className = "edit";
+        edit.textContent = "✎";
+        edit.title = "Edit this custom module";
+        edit.addEventListener("pointerdown", function(ev){ ev.stopPropagation(); });
+        edit.addEventListener("click", function(ev){ ev.stopPropagation(); openEditor(id); });
+        card.appendChild(edit);
         var del = document.createElement("div");
         del.className = "del";
         del.textContent = "×";
@@ -1356,6 +1455,44 @@
     customOrder = customOrder.filter(function(x){ return x !== id; });
     persistCustomSpecs();
     renderToolbox();
+  }
+
+  // Exports one custom module's definition (name + parts) as a standalone
+  // .json file — separate from "Save circuit", which snapshots the whole
+  // board. Meant for moving/sharing a single module between browsers or
+  // devices, where its localStorage-backed toolbox entry wouldn't follow.
+  function exportModuleSpec(id){
+    var spec = specs[id];
+    if (!spec) return;
+    var data = { format:"alphacore-bench-module", version:2, label:spec.label, children:spec.children.slice(), childNames:(spec.childNames||[]).slice() };
+    var safeName = spec.label.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "module";
+    downloadJSON(data, "alphacore-module-" + safeName + ".json");
+    log("Saved \"" + spec.label + "\" to a downloaded file.", "ok");
+  }
+
+  function importModuleSpec(data){
+    if (!data || data.format !== "alphacore-bench-module" || !Array.isArray(data.children) || !data.children.length){
+      log("That file doesn't look like a module export.", "err");
+      return;
+    }
+    var children = [], childNames = [], skipped = [];
+    data.children.forEach(function(t, i){
+      if (!COMPONENTS[t]){ skipped.push(t); return; }
+      children.push(t);
+      childNames.push((Array.isArray(data.childNames) && data.childNames[i]) || "");
+    });
+    if (!children.length){
+      log("None of that module's parts are known here — nothing to import.", "err");
+      return;
+    }
+    var id = "custom_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+    var label = String(data.label || "Imported module").slice(0, 40);
+    specs[id] = { id:id, kind:"custom", label:label, children:children, childNames:childNames };
+    customOrder.push(id);
+    persistCustomSpecs();
+    renderToolbox();
+    log("Imported \"" + label + "\" into the toolbox.", "ok");
+    if (skipped.length) log("Skipped unknown part type(s): " + skipped.join(", ") + ".", "err");
   }
 
   /* ---------- api hints ---------- */
@@ -1431,14 +1568,78 @@
     forEachInstance(function(inst){ if (inst.bind === name) taken = true; });
     return taken;
   }
-  function bindingName(type, edgeName){
+  // rawBase: the identifier text to try first (a component type name, or a
+  // sanitized custom-module label). typeKey: what counts as "the same type"
+  // for the Type_Edge disambiguation rule — a component type for base specs,
+  // or the custom spec's id for composite modules (so two drops of the same
+  // composite module get Type_Edge, matching how two of the same base part do).
+  function bindingName(rawBase, typeKey, edgeName){
     var otherOfType = false;
-    forEachInstance(function(inst){ if (inst.type === type) otherOfType = true; });
-    var base = otherOfType ? (type + "_" + edgeName) : type;
+    forEachInstance(function(inst){ if (inst.type === typeKey) otherOfType = true; });
+    var base = otherOfType ? (rawBase + "_" + edgeName) : rawBase;
     if (!bindNameTaken(base)) return base;
     var n = 2;
     while (bindNameTaken(base + n)) n++;
     return base + n;
+  }
+  // Turns an arbitrary custom-module label ("Sensor Rig!") into a valid JS
+  // identifier ("SensorRig") for use as its default binding name.
+  function sanitizeIdentifier(raw, fallback){
+    var s = String(raw || "").replace(/[^A-Za-z0-9_$]/g, "");
+    if (s && !/^[A-Za-z_$]/.test(s)) s = "_" + s;
+    return s || fallback;
+  }
+
+  /* ---------- custom (multi-part) module instances ---------- */
+  // A custom spec attaches as ONE grouped instance under a single binding —
+  // not one binding per sub-part. Its API is the union of every sub-part's
+  // calls, so e.g. an LED+Motor composite named "AlphaTest" exposes
+  // AlphaTest.On(), AlphaTest.SetSpeed(pct), AlphaTest.Stop(), etc.
+  function attachGroupInstance(spec, edgeName){
+    var subs = spec.children.map(function(type, idx){
+      var name = spec.childNames && spec.childNames[idx] ? spec.childNames[idx] : "";
+      return { type:type, name:name, state:COMPONENTS[type].makeState() };
+    });
+    var rawBase = sanitizeIdentifier(spec.label, "Module");
+    return {
+      id: nextId++,
+      type: spec.id,
+      isGroup: true,
+      specId: spec.id,
+      subs: subs,
+      bind: bindingName(rawBase, spec.id, edgeName),
+      pinCost: specPinCost(spec),
+      adcNeeded: specAdcNeeded(spec),
+      usesI2C: specUsesI2C(spec)
+    };
+  }
+
+  // The merged call list for a group instance: one Init(edge) that inits
+  // every sub-part, plus every other sub-part call with its own signature.
+  // A sub-part given its own name (set in the editor) gets that name
+  // prefixed onto every one of its calls (e.g. "Front" + SetSpeed ->
+  // FrontSetSpeed), so the merged API stays self-explanatory even before
+  // any collision happens. An unnamed sub keeps its call's plain name, and
+  // only picks up a numeric suffix if it collides with something else —
+  // the same style bindingName() disambiguates duplicate part types.
+  function groupApiEntries(inst){
+    var used = { Init:true };
+    var entries = [{ key:"Init", sig:"Init(edge)" }];
+    inst.subs.forEach(function(sub, subIdx){
+      var prefix = sub.name ? sanitizeIdentifier(sub.name, "") : "";
+      COMPONENTS[sub.type].api.forEach(function(sig){
+        var paren = sig.indexOf("(");
+        var name = paren === -1 ? sig : sig.slice(0, paren);
+        var params = paren === -1 ? "" : sig.slice(paren);
+        if (name === "Init") return;
+        var base = prefix ? prefix + name : name;
+        var key = base, n = 2;
+        while (used[key]){ key = base + n; n++; }
+        used[key] = true;
+        entries.push({ key:key, sig:key + params, subIdx:subIdx, origName:name });
+      });
+    });
+    return entries;
   }
 
   /* ---------- board render (dynamic) ---------- */
@@ -1462,23 +1663,36 @@
       var seen = {};
       (bundle ? bundle.children : []).forEach(function(inst){
         seen[inst.id] = true;
-        var def = COMPONENTS[inst.type];
         var chipEl = grid.querySelector('[data-id="'+inst.id+'"]');
         if (!chipEl){
           chipEl = document.createElement("div");
-          chipEl.className = "mod-chip" + (inst.usesI2C ? " i2c-mod" : "");
+          chipEl.className = "mod-chip" + (inst.isGroup ? " group-chip" : "") + (inst.usesI2C ? " i2c-mod" : "");
           chipEl.dataset.id = inst.id;
-          chipEl.title = inst.type;
-          var iconHolder = document.createElement("div");
-          iconHolder.className = "icon-holder";
-          chipEl.appendChild(iconHolder);
+          chipEl.title = inst.isGroup ? (specs[inst.specId] ? specs[inst.specId].label : "Module") : inst.type;
+          if (inst.isGroup){
+            var iconRow = document.createElement("div");
+            iconRow.className = "icon-row";
+            inst.subs.forEach(function(sub, subIdx){
+              var holder = document.createElement("div");
+              holder.className = "icon-holder sub-icon";
+              holder.dataset.sub = subIdx;
+              iconRow.appendChild(holder);
+              wireInteractiveOne(holder, sub.type, sub.state);
+            });
+            chipEl.appendChild(iconRow);
+          } else {
+            var iconHolder = document.createElement("div");
+            iconHolder.className = "icon-holder";
+            chipEl.appendChild(iconHolder);
+            wireInteractiveOne(iconHolder, inst.type, inst.state);
+          }
           var bindInput = document.createElement("input");
           bindInput.className = "bind-input";
           bindInput.type = "text";
           bindInput.spellcheck = false;
           bindInput.autocomplete = "off";
           bindInput.value = inst.bind;
-          bindInput.title = "Click to rename this part's binding in the code";
+          bindInput.title = inst.isGroup ? "Click to rename this module's binding in the code" : "Click to rename this part's binding in the code";
           bindInput.addEventListener("pointerdown", function(ev){ ev.stopPropagation(); });
           bindInput.addEventListener("click", function(ev){ ev.stopPropagation(); });
           bindInput.addEventListener("keydown", function(ev){
@@ -1494,9 +1708,15 @@
           });
           chipEl.appendChild(bindInput);
           grid.appendChild(chipEl);
-          wireInteractive(chipEl, e.name, inst);
         }
-        chipEl.querySelector(".icon-holder").innerHTML = def.renderIcon(inst.state);
+        if (inst.isGroup){
+          inst.subs.forEach(function(sub, subIdx){
+            var holder = chipEl.querySelector('.sub-icon[data-sub="'+subIdx+'"]');
+            if (holder) holder.innerHTML = COMPONENTS[sub.type].renderIcon(sub.state);
+          });
+        } else {
+          chipEl.querySelector(".icon-holder").innerHTML = COMPONENTS[inst.type].renderIcon(inst.state);
+        }
         var bindInputEl = chipEl.querySelector(".bind-input");
         if (document.activeElement !== bindInputEl) bindInputEl.value = inst.bind;
       });
@@ -1544,55 +1764,59 @@
     return true;
   }
 
-  function wireInteractive(chipEl, edgeName, inst){
-    if (inst.type === "AlphaButton"){
-      var press = function(down){ inst.state.pressed = down; renderAll(); };
-      chipEl.addEventListener("pointerdown", function(ev){ if (ev.target.closest(".bind-input")) return; press(true); });
-      chipEl.addEventListener("pointerup", function(){ press(false); });
-      chipEl.addEventListener("pointerleave", function(){ press(false); });
+  // Wires the interactive behavior for one component's icon (a plain
+  // instance's single icon-holder, or one sub-part's icon within a group
+  // chip). Takes the holder element + that part's own type/state directly,
+  // so a multi-part group chip can wire each sub-icon independently.
+  function wireInteractiveOne(holderEl, type, state){
+    if (type === "AlphaButton"){
+      var press = function(down){ state.pressed = down; renderAll(); };
+      holderEl.addEventListener("pointerdown", function(ev){ if (ev.target.closest(".bind-input")) return; press(true); });
+      holderEl.addEventListener("pointerup", function(){ press(false); });
+      holderEl.addEventListener("pointerleave", function(){ press(false); });
     }
-    if (inst.type === "AlphaDial"){
+    if (type === "AlphaDial"){
       var dragging = false;
-      chipEl.addEventListener("pointerdown", function(ev){
+      holderEl.addEventListener("pointerdown", function(ev){
         if (ev.target.closest(".bind-input")) return;
-        dragging = true; chipEl.setPointerCapture(ev.pointerId);
+        dragging = true; holderEl.setPointerCapture(ev.pointerId);
       });
-      chipEl.addEventListener("pointermove", function(ev){
+      holderEl.addEventListener("pointermove", function(ev){
         if (!dragging) return;
-        var rect = chipEl.getBoundingClientRect();
+        var rect = holderEl.getBoundingClientRect();
         var cx0 = rect.left + rect.width/2, cy0 = rect.top + rect.height/2;
         var ang = Math.atan2(ev.clientY - cy0, ev.clientX - cx0) * 180/Math.PI;
         var pct = Math.max(0, Math.min(100, Math.round(((ang + 180) / 360) * 100)));
-        inst.state.value = pct;
+        state.value = pct;
         renderAll();
       });
-      chipEl.addEventListener("pointerup", function(){ dragging = false; });
+      holderEl.addEventListener("pointerup", function(){ dragging = false; });
     }
-    if (inst.type === "AlphaJoystick"){
+    if (type === "AlphaJoystick"){
       var jdragging = false;
-      chipEl.addEventListener("pointerdown", function(ev){
+      holderEl.addEventListener("pointerdown", function(ev){
         if (ev.target.closest(".bind-input")) return;
-        jdragging = true; chipEl.setPointerCapture(ev.pointerId);
+        jdragging = true; holderEl.setPointerCapture(ev.pointerId);
       });
       var moveJoy = function(ev){
-        var iconEl = chipEl.querySelector(".joy-icon");
+        var iconEl = holderEl.querySelector(".joy-icon");
         if (!iconEl) return;
         var rect = iconEl.getBoundingClientRect();
         var px = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
         var py = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
-        inst.state.x = Math.round(px * 100);
-        inst.state.y = Math.round((1-py) * 100);
+        state.x = Math.round(px * 100);
+        state.y = Math.round((1-py) * 100);
         renderAll();
       };
-      chipEl.addEventListener("pointermove", function(ev){ if (jdragging) moveJoy(ev); });
-      chipEl.addEventListener("pointerup", function(){ jdragging = false; });
+      holderEl.addEventListener("pointermove", function(ev){ if (jdragging) moveJoy(ev); });
+      holderEl.addEventListener("pointerup", function(){ jdragging = false; });
     }
-    if (inst.type === "AlphaMotion"){
-      chipEl.addEventListener("click", function(ev){
+    if (type === "AlphaMotion"){
+      holderEl.addEventListener("click", function(ev){
         if (ev.target.closest(".bind-input")) return;
-        inst.state.active = true; renderAll();
-        clearTimeout(inst.state._mt);
-        inst.state._mt = setTimeout(function(){ inst.state.active = false; renderAll(); }, 2000);
+        state.active = true; renderAll();
+        clearTimeout(state._mt);
+        state._mt = setTimeout(function(){ state.active = false; renderAll(); }, 2000);
       });
     }
   }
@@ -1640,19 +1864,24 @@
     });
     if (target){
       var spec = specs[dragSpecId];
-      var children = spec.children.map(function(type){
-        var def = COMPONENTS[type];
-        return { id: nextId++, type: type, state: def.makeState(), bind: bindingName(type, target.name), pinCost: def.pinCost, adcNeeded: def.adcNeeded||0, usesI2C: def.usesI2C };
-      });
+      // A custom (multi-part) spec attaches as one grouped instance under a
+      // single binding with a merged API; a base spec (exactly one part)
+      // attaches as that one instance, same as always.
+      var attached = spec.kind === "custom"
+        ? [attachGroupInstance(spec, target.name)]
+        : spec.children.map(function(type){
+            var def = COMPONENTS[type];
+            return { id: nextId++, type: type, state: def.makeState(), bind: bindingName(type, type, target.name), pinCost: def.pinCost, adcNeeded: def.adcNeeded||0, usesI2C: def.usesI2C };
+          });
       var bundle = slots[target.name];
       if (bundle){
-        bundle.children = bundle.children.concat(children);
+        bundle.children = bundle.children.concat(attached);
         if (bundle.specIds.indexOf(dragSpecId) === -1) bundle.specIds.push(dragSpecId);
       } else {
-        slots[target.name] = { specIds: [dragSpecId], children: children };
+        slots[target.name] = { specIds: [dragSpecId], children: attached };
       }
-      children.forEach(function(inst){ addInitCall(inst.bind, target.name); });
-      var binds = children.map(function(c){ return c.bind + ".Init(" + target.name + ")"; }).join(", ");
+      attached.forEach(function(inst){ addInitCall(inst.bind, target.name); });
+      var binds = attached.map(function(c){ return c.bind + ".Init(" + target.name + ")"; }).join(", ");
       log("Attached " + spec.label + " to " + target.name.replace(/([A-Z])/g," $1").trim() + " — added " + binds + " to setup().", "ok");
     }
     ghost.remove();
@@ -1687,27 +1916,37 @@
     lastCodeCaret = { start: caret, end: caret };
   }
 
+  function addApiHintChip(bind, sig, isI2C){
+    var call = bind + "." + sig;
+    var c = document.createElement("code");
+    if (isI2C) c.className = "i2c";
+    c.textContent = call;
+    c.title = "Drag into the code, or click to insert at the cursor";
+    c.draggable = true;
+    c.addEventListener("dragstart", function(ev){
+      ev.dataTransfer.setData("text/plain", call + ";");
+      ev.dataTransfer.effectAllowed = "copy";
+      c.classList.add("dragging");
+    });
+    c.addEventListener("dragend", function(){ c.classList.remove("dragging"); });
+    c.addEventListener("click", function(){ insertIntoCode(call + ";"); });
+    apiHints.appendChild(c);
+  }
+
   function buildApiHints(){
     apiHints.innerHTML = "";
     var any = false;
     forEachInstance(function(inst){
       any = true;
-      COMPONENTS[inst.type].api.forEach(function(sig){
-        var call = inst.bind + "." + sig;
-        var c = document.createElement("code");
-        if (inst.usesI2C) c.className = "i2c";
-        c.textContent = call;
-        c.title = "Drag into the code, or click to insert at the cursor";
-        c.draggable = true;
-        c.addEventListener("dragstart", function(ev){
-          ev.dataTransfer.setData("text/plain", call + ";");
-          ev.dataTransfer.effectAllowed = "copy";
-          c.classList.add("dragging");
+      if (inst.isGroup){
+        groupApiEntries(inst).forEach(function(entry){
+          addApiHintChip(inst.bind, entry.sig, inst.usesI2C);
         });
-        c.addEventListener("dragend", function(){ c.classList.remove("dragging"); });
-        c.addEventListener("click", function(){ insertIntoCode(call + ";"); });
-        apiHints.appendChild(c);
-      });
+      } else {
+        COMPONENTS[inst.type].api.forEach(function(sig){
+          addApiHintChip(inst.bind, sig, inst.usesI2C);
+        });
+      }
     });
     if (!any){
       var c = document.createElement("code");
@@ -1729,7 +1968,11 @@
   var editorName = document.getElementById("editorName");
   var editorSaveBtn = document.getElementById("editorSaveBtn");
   var editorCancelBtn = document.getElementById("editorCancelBtn");
+  var editorTitle = document.getElementById("editorTitle");
+  var editorSub = document.getElementById("editorSub");
   var draft = [];
+  var draftNames = []; // parallel to draft — optional per-part name, "" if unset
+  var editingSpecId = null;
 
   function draftPins(){ return draft.reduce(function(sum,t){ return sum + (COMPONENTS[t].usesI2C?0:COMPONENTS[t].pinCost); }, 0); }
   function draftAdc(){ return draft.reduce(function(sum,t){ return sum + (COMPONENTS[t].adcNeeded||0); }, 0); }
@@ -1748,6 +1991,7 @@
       btn.addEventListener("click", function(){
         if (!wouldFit) return;
         draft.push(type);
+        draftNames.push("");
         renderEditor();
       });
       editorPalette.appendChild(btn);
@@ -1757,15 +2001,34 @@
   function renderDraft(){
     draftList.innerHTML = "";
     draft.forEach(function(type, idx){
+      var def = COMPONENTS[type];
       var chip = document.createElement("div");
       chip.className = "draft-chip";
-      var removeBtn = document.createElement("button");
-      removeBtn.type = "button";
+      chip.title = def.label;
+
+      var iconHolder = document.createElement("div");
+      iconHolder.className = "icon-holder";
+      iconHolder.innerHTML = def.renderIcon(def.makeState());
+      chip.appendChild(iconHolder);
+
+      var nameInput = document.createElement("input");
+      nameInput.className = "name-input";
+      nameInput.type = "text";
+      nameInput.spellcheck = false;
+      nameInput.autocomplete = "off";
+      nameInput.value = draftNames[idx] || "";
+      nameInput.placeholder = def.label;
+      nameInput.title = "Optional name for this part (used to prefix its calls in the merged API, e.g. Front + SetSpeed -> FrontSetSpeed)";
+      nameInput.addEventListener("input", function(){ draftNames[idx] = nameInput.value; });
+      chip.appendChild(nameInput);
+
+      var removeBtn = document.createElement("div");
+      removeBtn.className = "remove";
       removeBtn.textContent = "×";
       removeBtn.title = "Remove";
-      removeBtn.addEventListener("click", function(){ draft.splice(idx,1); renderEditor(); });
-      chip.textContent = COMPONENTS[type].label + " ";
+      removeBtn.addEventListener("click", function(){ draft.splice(idx,1); draftNames.splice(idx,1); renderEditor(); });
       chip.appendChild(removeBtn);
+
       draftList.appendChild(chip);
     });
   }
@@ -1786,9 +2049,29 @@
     renderEditorBar();
   }
 
-  function openEditor(){
-    draft = [];
-    editorName.value = "";
+  // With no id, opens a blank editor for a new module. With an existing
+  // custom spec's id, opens it pre-loaded for editing — Save then updates
+  // that spec in place instead of creating a new one. Editing a spec that's
+  // already attached to an edge only changes what future drags build; parts
+  // already on the board keep the shape they were attached with (each
+  // attached instance is its own independent snapshot, not a live view of
+  // the spec — see attachGroupInstance).
+  function openEditor(editId){
+    var spec = editId ? specs[editId] : null;
+    editingSpecId = spec ? editId : null;
+    draft = spec ? spec.children.slice() : [];
+    draftNames = spec ? draft.map(function(t, i){ return (spec.childNames && spec.childNames[i]) || ""; }) : [];
+    editorName.value = spec ? spec.label : "";
+    editorTitle.textContent = spec ? "Edit Module" : "Module Editor";
+    if (spec){
+      var attachedCount = edgesForSpec(editId).length;
+      editorSub.textContent = attachedCount
+        ? "Editing \"" + spec.label + "\" — changes apply to future drags only; " + attachedCount + " edge" + (attachedCount>1?"s":"") + " already using it keep their current parts."
+        : "Editing \"" + spec.label + "\". Up to 4 GPIO pins total, of which at most 3 can need ADC; I2C parts don't count against that budget.";
+    } else {
+      editorSub.textContent = "Combine parts into one composite module (up to 4 GPIO pins total, of which at most 3 can need ADC; I2C parts don't count against that budget), then save it to the toolbox.";
+    }
+    editorSaveBtn.textContent = spec ? "Save changes" : "Save to toolbox";
     editorOverlay.hidden = false;
     renderEditor();
     editorName.focus();
@@ -1796,9 +2079,30 @@
   function closeEditor(){
     editorOverlay.hidden = true;
     draft = [];
+    draftNames = [];
+    editingSpecId = null;
   }
 
-  openEditorBtn.addEventListener("click", openEditor);
+  openEditorBtn.addEventListener("click", function(){ openEditor(); });
+
+  var importModuleBtn = document.getElementById("importModuleBtn");
+  var importModuleFileInput = document.getElementById("importModuleFileInput");
+  importModuleBtn.addEventListener("click", function(){ importModuleFileInput.click(); });
+  importModuleFileInput.addEventListener("change", function(ev){
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try {
+        importModuleSpec(JSON.parse(String(reader.result)));
+      } catch (err){
+        log("Couldn't read that file — " + err.message + ".", "err");
+      }
+      importModuleFileInput.value = "";
+    };
+    reader.onerror = function(){ log("Couldn't read that file.", "err"); importModuleFileInput.value = ""; };
+    reader.readAsText(file);
+  });
   editorCancelBtn.addEventListener("click", closeEditor);
   editorCloseBtn.addEventListener("click", closeEditor);
   editorOverlay.addEventListener("pointerdown", function(ev){
@@ -1811,12 +2115,22 @@
   editorSaveBtn.addEventListener("click", function(){
     var name = editorName.value.trim();
     if (!draft.length || !name) return;
-    var id = "custom_" + Date.now() + "_" + Math.floor(Math.random()*1000);
-    specs[id] = { id:id, kind:"custom", label:name, children:draft.slice() };
-    customOrder.push(id);
+    var id = editingSpecId;
+    var verb = "Saved";
+    var names = draftNames.slice();
+    if (id && specs[id]){
+      specs[id].label = name;
+      specs[id].children = draft.slice();
+      specs[id].childNames = names;
+      verb = "Updated";
+    } else {
+      id = "custom_" + Date.now() + "_" + Math.floor(Math.random()*1000);
+      specs[id] = { id:id, kind:"custom", label:name, children:draft.slice(), childNames:names };
+      customOrder.push(id);
+    }
     persistCustomSpecs();
     renderToolbox();
-    log("Saved \"" + name + "\" to the toolbox (" + specPinCost(specs[id]) + "/" + EDGE_PINS + " pins" + (specUsesI2C(specs[id]) ? " + I2C" : "") + ").", "ok");
+    log(verb + " \"" + name + "\" in the toolbox (" + specPinCost(specs[id]) + "/" + EDGE_PINS + " pins" + (specUsesI2C(specs[id]) ? " + I2C" : "") + ").", "ok");
     closeEditor();
   });
 
@@ -1849,18 +2163,40 @@
       Serial: { println:function(m){ log(String(m)); }, print:function(m){ log(String(m)); } }
     };
 
-    forEachInstance(function(inst, edgeName){
-      var def = COMPONENTS[inst.type];
-      var ctx = {
-        state: inst.state,
+    function makeCtx(type, state){
+      return {
+        state: state,
         refresh: renderAll,
-        checkEdge: function(type, actual, claimed){
+        checkEdge: function(t, actual, claimed){
           if (claimed !== actual){
-            throw new Error(type + ".Init(" + claimed + ") doesn't match where it's plugged in (" + actual + ").");
+            throw new Error(t + ".Init(" + claimed + ") doesn't match where it's plugged in (" + actual + ").");
           }
         }
       };
-      runtime[inst.bind] = def.runtime(edgeName, ctx);
+    }
+
+    forEachInstance(function(inst, edgeName){
+      if (inst.isGroup){
+        // One call surface per group, built from each sub-part's own
+        // runtime — Init() is merged into a single call that inits every
+        // sub-part; every other call keeps groupApiEntries()'s
+        // collision-resolved key so it matches what the sidebar/hints show.
+        var subApis = inst.subs.map(function(sub, subIdx){
+          return COMPONENTS[sub.type].runtime(edgeName, makeCtx(sub.type, sub.state));
+        });
+        var merged = {};
+        groupApiEntries(inst).forEach(function(entry){
+          if (entry.key === "Init") return;
+          merged[entry.key] = subApis[entry.subIdx][entry.origName];
+        });
+        merged.Init = function(edge){
+          subApis.forEach(function(api){ api.Init(edge); });
+        };
+        runtime[inst.bind] = merged;
+      } else {
+        var def = COMPONENTS[inst.type];
+        runtime[inst.bind] = def.runtime(edgeName, makeCtx(inst.type, inst.state));
+      }
     });
 
     var code = document.getElementById("code").value;
@@ -1911,12 +2247,16 @@
 
   /* ---------- save / load circuit + code ---------- */
   function serializeBoard(){
-    var data = { format:"alphacore-bench-circuit", version:1, savedAt:new Date().toISOString(), code:codeEl.value, slots:{} };
+    var data = { format:"alphacore-bench-circuit", version:3, savedAt:new Date().toISOString(), code:codeEl.value, slots:{} };
     EDGES.forEach(function(e){
       var bundle = slots[e.name];
       data.slots[e.name] = bundle ? {
         specIds: bundle.specIds.slice(),
-        children: bundle.children.map(function(inst){ return { type:inst.type, bind:inst.bind }; })
+        children: bundle.children.map(function(inst){
+          return inst.isGroup
+            ? { isGroup:true, specId:inst.specId, bind:inst.bind, subs:inst.subs.map(function(s){ return s.type; }), subNames:inst.subs.map(function(s){ return s.name||""; }) }
+            : { type:inst.type, bind:inst.bind };
+        })
       } : null;
     });
     return data;
@@ -1931,6 +2271,25 @@
       if (!saved || !Array.isArray(saved.children)) return;
       var children = [];
       saved.children.forEach(function(c){
+        if (c && c.isGroup){
+          var subTypes = Array.isArray(c.subs) ? c.subs : [];
+          var subNames = Array.isArray(c.subNames) ? c.subNames : [];
+          var subs = [];
+          subTypes.forEach(function(t, subI){
+            var def = COMPONENTS[t];
+            if (!def){ skipped.push(t); return; }
+            subs.push({ type:t, name:subNames[subI]||"", state:def.makeState() });
+          });
+          if (!subs.length) return;
+          children.push({
+            id:nextId++, type:c.specId || ("group_" + nextId), isGroup:true, specId:c.specId, subs:subs,
+            bind:String(c.bind || "Module"),
+            pinCost: subs.reduce(function(sum,s){ var d=COMPONENTS[s.type]; return sum + (d.usesI2C?0:d.pinCost); }, 0),
+            adcNeeded: subs.reduce(function(sum,s){ return sum + (COMPONENTS[s.type].adcNeeded||0); }, 0),
+            usesI2C: subs.some(function(s){ return COMPONENTS[s.type].usesI2C; })
+          });
+          return;
+        }
         var def = c && COMPONENTS[c.type];
         if (!def){ skipped.push(c && c.type || "?"); return; }
         children.push({ id:nextId++, type:c.type, state:def.makeState(), bind:String(c.bind || c.type), pinCost:def.pinCost, adcNeeded:def.adcNeeded||0, usesI2C:def.usesI2C });
@@ -1945,17 +2304,21 @@
     if (skipped.length) log("Skipped unknown part type(s): " + skipped.join(", ") + ".", "err");
   }
 
-  saveBtn.addEventListener("click", function(){
-    var data = serializeBoard();
+  function downloadJSON(data, filename){
     var blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "alphacore-circuit-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  saveBtn.addEventListener("click", function(){
+    var data = serializeBoard();
+    downloadJSON(data, "alphacore-circuit-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json");
     log("Saved circuit + code to a downloaded file.", "ok");
   });
 
@@ -1981,7 +2344,7 @@
   /* ---------- boot: preset example ---------- */
   function seed(type, edgeName){
     var def = COMPONENTS[type];
-    var bind = bindingName(type, edgeName);
+    var bind = bindingName(type, type, edgeName);
     slots[edgeName] = { specIds: [type], children: [
       { id: nextId++, type: type, state: def.makeState(), bind: bind, pinCost: def.pinCost, adcNeeded: def.adcNeeded||0, usesI2C: def.usesI2C }
     ]};
