@@ -300,6 +300,10 @@
     position:relative;
     width:min(500px, 100%);
     aspect-ratio:1/1;
+    /* The Bottom edge's dropzone + its zone-label (positioned via
+       bottom:-32px) overhang below this box's own bottom edge — this
+       margin keeps that overhang from colliding with the caption below. */
+    margin-bottom:70px;
   }
   .board-stage svg{ width:100%; height:100%; display:block; }
   .dropzone{
@@ -761,6 +765,9 @@
           <div class="controls">
             <button class="btn primary" id="runBtn">Run</button>
             <button class="btn" id="resetBtn">Reset board</button>
+            <button class="btn" id="saveBtn">Save circuit</button>
+            <button class="btn" id="loadBtn">Load circuit</button>
+            <input type="file" id="loadFileInput" accept="application/json,.json" hidden>
           </div>
           <div class="console" id="consoleLog" role="log" aria-live="polite"></div>
         </div>
@@ -1804,6 +1811,9 @@
   /* ---------- run / stop ---------- */
   var runBtn = document.getElementById("runBtn");
   var resetBtn = document.getElementById("resetBtn");
+  var saveBtn = document.getElementById("saveBtn");
+  var loadBtn = document.getElementById("loadBtn");
+  var loadFileInput = document.getElementById("loadFileInput");
   var statusPill = document.getElementById("statusPill");
   var timer = null;
 
@@ -1885,6 +1895,75 @@
     buildApiHints();
     clearLog();
     log("Board reset. Saved custom modules in the toolbox were kept.", "dim");
+  });
+
+  /* ---------- save / load circuit + code ---------- */
+  function serializeBoard(){
+    var data = { format:"alphacore-bench-circuit", version:1, savedAt:new Date().toISOString(), code:codeEl.value, slots:{} };
+    EDGES.forEach(function(e){
+      var bundle = slots[e.name];
+      data.slots[e.name] = bundle ? {
+        specIds: bundle.specIds.slice(),
+        children: bundle.children.map(function(inst){ return { type:inst.type, bind:inst.bind }; })
+      } : null;
+    });
+    return data;
+  }
+
+  function applyBoardData(data){
+    stopSim();
+    slots = { Top:null, UpperRight:null, LowerRight:null, Bottom:null, LowerLeft:null, UpperLeft:null };
+    var skipped = [];
+    EDGES.forEach(function(e){
+      var saved = data.slots ? data.slots[e.name] : null;
+      if (!saved || !Array.isArray(saved.children)) return;
+      var children = [];
+      saved.children.forEach(function(c){
+        var def = c && COMPONENTS[c.type];
+        if (!def){ skipped.push(c && c.type || "?"); return; }
+        children.push({ id:nextId++, type:c.type, state:def.makeState(), bind:String(c.bind || c.type), pinCost:def.pinCost, adcNeeded:def.adcNeeded||0, usesI2C:def.usesI2C });
+      });
+      if (children.length) slots[e.name] = { specIds:Array.isArray(saved.specIds) ? saved.specIds : [], children:children };
+    });
+    codeEl.value = typeof data.code === "string" ? data.code : codeEl.value;
+    renderAll();
+    buildApiHints();
+    clearLog();
+    log("Loaded circuit + code from file.", "ok");
+    if (skipped.length) log("Skipped unknown part type(s): " + skipped.join(", ") + ".", "err");
+  }
+
+  saveBtn.addEventListener("click", function(){
+    var data = serializeBoard();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type:"application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "alphacore-circuit-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    log("Saved circuit + code to a downloaded file.", "ok");
+  });
+
+  loadBtn.addEventListener("click", function(){ loadFileInput.click(); });
+  loadFileInput.addEventListener("change", function(ev){
+    var file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try {
+        var data = JSON.parse(String(reader.result));
+        if (!data || typeof data !== "object" || !data.slots) throw new Error("not a circuit file");
+        applyBoardData(data);
+      } catch (err){
+        log("Couldn't load that file — " + err.message + ".", "err");
+      }
+      loadFileInput.value = "";
+    };
+    reader.onerror = function(){ log("Couldn't read that file.", "err"); loadFileInput.value = ""; };
+    reader.readAsText(file);
   });
 
   /* ---------- boot: preset example ---------- */
