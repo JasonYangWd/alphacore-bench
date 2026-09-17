@@ -478,6 +478,45 @@
     background:color-mix(in srgb, var(--gold) 40%, transparent);
   }
 
+  /* Motion (PIR) */
+  .motion-icon{
+    width:24px; height:24px; border-radius:6px;
+    position:relative;
+    background:var(--board-face);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .motion-icon .lens{
+    width:12px; height:12px; border-radius:50%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    z-index:1;
+  }
+  .motion-icon .ring{
+    position:absolute; inset:3px; border-radius:50%;
+    border:2px solid var(--copper);
+    opacity:0;
+  }
+  .motion-icon.active .lens{ background:var(--gold); }
+  .motion-icon.active .ring{ animation:ring-pulse 0.6s ease-out; }
+  /* Relay */
+  .relay-icon{
+    width:26px; height:20px; border-radius:5px;
+    background:var(--board-face);
+    border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    transition:box-shadow 0.08s;
+  }
+  .relay-icon .paddle{
+    width:16px; height:5px; border-radius:3px;
+    background:linear-gradient(180deg, #4a5b57, #2f3d3a);
+    transition:transform 0.12s, background 0.12s;
+  }
+  .relay-icon.on .paddle{ transform:translateX(4px); background:linear-gradient(180deg, var(--copper), var(--copper-2)); }
+  .relay-icon:not(.on) .paddle{ transform:translateX(-4px); }
+  .relay-icon.click{ box-shadow:0 0 0 2px color-mix(in srgb, var(--copper) 50%, transparent); }
   /* Motor */
   .motor-icon{
     width:24px; height:24px; border-radius:50%;
@@ -636,7 +675,7 @@
   <header class="top">
     <div class="brand">
       <div class="mark">Alpha<em>Core</em> Bench</div>
-      <div class="tag">One ESP32 hub, six pluggable edges. Each edge holds exactly one module &mdash; build a multi-part module in the editor to make full use of its 4 GPIO pins.</div>
+      <div class="tag">One ESP32 hub, six pluggable edges. Drop as many modules on an edge as fit its 4 GPIO pins &mdash; or build a multi-part module in the editor.</div>
     </div>
     <div class="status-pill" id="statusPill">idle</div>
   </header>
@@ -885,6 +924,38 @@
         };
       }
     },
+    AlphaMotion: {
+      label:"AlphaMotion", kind:"PIR Motion &middot; 1 GPIO (DI)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","Detected()"],
+      makeState:function(){ return { active:false }; },
+      renderIcon:function(state){ return '<div class="motion-icon'+(state.active?' active':'')+'" data-motion="1"><div class="lens"></div><div class="ring"></div></div>'; },
+      runtime:function(edgeName, ctx){
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaMotion", edgeName, edge); },
+          Detected:function(){ return !!ctx.state.active; }
+        };
+      }
+    },
+    AlphaRelay: {
+      label:"AlphaRelay", kind:"Relay &middot; 1 GPIO (DO)", pinCost:1, usesI2C:false,
+      api:["Init(edge)","On()","Off()","Toggle()","IsOn()"],
+      makeState:function(){ return { on:false, clicked:false }; },
+      renderIcon:function(state){ return '<div class="relay-icon'+(state.on?' on':'')+(state.clicked?' click':'')+'"><div class="paddle"></div></div>'; },
+      runtime:function(edgeName, ctx){
+        function flipTo(on){
+          ctx.state.on = on; ctx.state.clicked = true; ctx.refresh();
+          clearTimeout(ctx.state._ct);
+          ctx.state._ct = setTimeout(function(){ ctx.state.clicked = false; ctx.refresh(); }, 180);
+        }
+        return {
+          Init:function(edge){ ctx.checkEdge("AlphaRelay", edgeName, edge); },
+          On:function(){ flipTo(true); },
+          Off:function(){ flipTo(false); },
+          Toggle:function(){ flipTo(!ctx.state.on); },
+          IsOn:function(){ return !!ctx.state.on; }
+        };
+      }
+    },
     AlphaDisplay: {
       label:"AlphaDisplay", kind:"LCD/OLED &middot; I2C bus", pinCost:0, usesI2C:true,
       api:["Init(edge)","Print(text)","Clear()"],
@@ -902,7 +973,7 @@
       }
     }
   };
-  var COMPONENT_ORDER = ["AlphaLED","AlphaButton","AlphaBuzzer","AlphaDial","AlphaServo","AlphaLight","AlphaMotor","AlphaJoystick","AlphaDisplay"];
+  var COMPONENT_ORDER = ["AlphaLED","AlphaButton","AlphaBuzzer","AlphaDial","AlphaServo","AlphaLight","AlphaMotor","AlphaJoystick","AlphaMotion","AlphaRelay","AlphaDisplay"];
 
   /* ---------- module specs (toolbox entries) ---------- */
   // A "spec" is what's draggable from the toolbox: a base spec wraps exactly
@@ -943,7 +1014,9 @@
   loadCustomSpecs();
 
   /* ---------- board state ---------- */
-  // Each edge holds at most one module "bundle": null, or { specId, label, children:[instance,...] }.
+  // Each edge holds at most one "bundle": null, or { specIds:[id,...], children:[instance,...] }.
+  // A bundle can accumulate instances from several separate drops (or one
+  // multi-part custom spec) as long as the edge's 4-GPIO budget allows.
   var slots = { Top:null, UpperRight:null, LowerRight:null, Bottom:null, LowerLeft:null, UpperLeft:null };
   var nextId = 1;
 
@@ -971,8 +1044,17 @@
   }
   function edgesForSpec(specId){
     var out = [];
-    for (var name in slots){ if (slots[name] && slots[name].specId === specId) out.push(name); }
+    for (var name in slots){ if (slots[name] && slots[name].specIds.indexOf(specId) !== -1) out.push(name); }
     return out;
+  }
+  function bundleLabel(bundle){
+    var seen = {}, parts = [];
+    bundle.children.forEach(function(inst){
+      if (seen[inst.type]) return;
+      seen[inst.type] = true;
+      parts.push(COMPONENTS[inst.type].label);
+    });
+    return parts.join(" + ");
   }
 
   var EXAMPLE = [
@@ -1221,9 +1303,15 @@
     codeEl.value = code.slice(0, block.bodyStart) + newBody + code.slice(block.bodyEnd);
   }
 
-  function removeInitCall(bind){
-    var re = new RegExp("^[ \\t]*" + escapeRegExp(bind) + "\\s*\\.\\s*Init\\([^;]*\\);?[ \\t]*\\n?", "m");
-    codeEl.value = codeEl.value.replace(re, "");
+  // Drops every line in the sketch that touches this binding -- not just its
+  // Init() call in setup(), but any other line in the sketch that calls
+  // bind.Something(...) too (e.g. a Read()/IsPressed() in loop()). A detached
+  // part's calls would just throw once Run is pressed otherwise.
+  function removeBindingCode(bind){
+    var wordRe = new RegExp("\\b" + escapeRegExp(bind) + "\\b");
+    codeEl.value = codeEl.value.split("\n").filter(function(line){
+      return !wordRe.test(line);
+    }).join("\n");
   }
 
   /* ---------- console ---------- */
@@ -1268,7 +1356,7 @@
       var full = used >= EDGE_PINS;
       e.zoneEl.dataset.empty = bundle ? "false" : "true";
       edgeDetachEls[e.name].hidden = !bundle;
-      moduleLabelEls[e.name].textContent = bundle && bundle.children.length > 1 ? bundle.label : "";
+      moduleLabelEls[e.name].textContent = bundle && bundle.children.length > 1 ? bundleLabel(bundle) : "";
       pinUsageEls[e.name].textContent = used + "/" + EDGE_PINS + " pins";
       pinUsageEls[e.name].classList.toggle("full", full);
       var i2cN = i2cCount(e.name);
@@ -1319,11 +1407,11 @@
   function detachEdge(edgeName){
     var bundle = slots[edgeName];
     if (!bundle) return;
-    bundle.children.forEach(function(inst){ removeInitCall(inst.bind); });
+    bundle.children.forEach(function(inst){ removeBindingCode(inst.bind); });
     slots[edgeName] = null;
     renderAll();
     buildApiHints();
-    log("Detached " + bundle.label + " from " + edgeName.replace(/([A-Z])/g," $1").trim() + ".", "dim");
+    log("Detached " + bundleLabel(bundle) + " from " + edgeName.replace(/([A-Z])/g," $1").trim() + ".", "dim");
   }
 
   // Commits an edit to a part's binding name: validates it, rewrites every
@@ -1394,6 +1482,14 @@
       chipEl.addEventListener("pointermove", function(ev){ if (jdragging) moveJoy(ev); });
       chipEl.addEventListener("pointerup", function(){ jdragging = false; });
     }
+    if (inst.type === "AlphaMotion"){
+      chipEl.addEventListener("click", function(ev){
+        if (ev.target.closest(".bind-input")) return;
+        inst.state.active = true; renderAll();
+        clearTimeout(inst.state._mt);
+        inst.state._mt = setTimeout(function(){ inst.state.active = false; renderAll(); }, 2000);
+      });
+    }
   }
 
   /* ---------- drag from toolbox to board ---------- */
@@ -1401,7 +1497,10 @@
   var dragSpecId = null;
 
   function canDrop(edgeName){
-    return !slots[edgeName];
+    if (!dragSpecId) return false;
+    var spec = specs[dragSpecId];
+    if (!spec) return false;
+    return specPinCost(spec) <= (EDGE_PINS - pinsUsed(edgeName));
   }
 
   function startDrag(specId, x, y){
@@ -1439,7 +1538,13 @@
         var def = COMPONENTS[type];
         return { id: nextId++, type: type, state: def.makeState(), bind: bindingName(type, target.name), pinCost: def.pinCost, usesI2C: def.usesI2C };
       });
-      slots[target.name] = { specId: dragSpecId, label: spec.label, children: children };
+      var bundle = slots[target.name];
+      if (bundle){
+        bundle.children = bundle.children.concat(children);
+        if (bundle.specIds.indexOf(dragSpecId) === -1) bundle.specIds.push(dragSpecId);
+      } else {
+        slots[target.name] = { specIds: [dragSpecId], children: children };
+      }
       children.forEach(function(inst){ addInitCall(inst.bind, target.name); });
       var binds = children.map(function(c){ return c.bind + ".Init(" + target.name + ")"; }).join(", ");
       log("Attached " + spec.label + " to " + target.name.replace(/([A-Z])/g," $1").trim() + " — added " + binds + " to setup().", "ok");
@@ -1649,7 +1754,7 @@
   resetBtn.addEventListener("click", function(){
     stopSim();
     for (var name in slots){
-      if (slots[name]) slots[name].children.forEach(function(inst){ removeInitCall(inst.bind); });
+      if (slots[name]) slots[name].children.forEach(function(inst){ removeBindingCode(inst.bind); });
     }
     slots = { Top:null, UpperRight:null, LowerRight:null, Bottom:null, LowerLeft:null, UpperLeft:null };
     codeEl.value = "function setup() {\n\n}\n\nfunction loop() {\n\n}";
@@ -1663,7 +1768,7 @@
   function seed(type, edgeName){
     var def = COMPONENTS[type];
     var bind = bindingName(type, edgeName);
-    slots[edgeName] = { specId: type, label: def.label, children: [
+    slots[edgeName] = { specIds: [type], children: [
       { id: nextId++, type: type, state: def.makeState(), bind: bind, pinCost: def.pinCost, usesI2C: def.usesI2C }
     ]};
   }
