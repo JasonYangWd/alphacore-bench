@@ -145,7 +145,7 @@
   @media (max-width:1300px){
     .layout{ grid-template-columns:230px minmax(300px,1fr) 480px; }
     .notebook-body{ flex-direction:column; }
-    .api-sidebar{ width:100%; max-height:160px; flex-direction:row !important; flex-wrap:wrap; overflow-y:auto; }
+    .api-sidebar{ width:100%; max-height:180px; flex-direction:row !important; flex-wrap:wrap; overflow-y:auto; }
   }
   @media (max-width:980px){
     .layout{ grid-template-columns:1fr; }
@@ -714,14 +714,80 @@
 
   /* ---- Notebook / code ---- */
   .notebook{ display:flex; flex-direction:column; gap:12px; }
+  .tab-bar{ display:flex; gap:6px; }
+  .tab-btn{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.76rem; font-weight:600; letter-spacing:0.03em; text-transform:uppercase;
+    padding:7px 16px; border-radius:8px 8px 0 0;
+    border:1px solid var(--line); border-bottom:none;
+    background:var(--panel-2); color:var(--muted); cursor:pointer;
+    position:relative; top:1px;
+  }
+  .tab-btn.active{ background:var(--panel); color:var(--ink); border-color:var(--copper); box-shadow:inset 0 2px 0 var(--copper); }
+  .tab-panel[hidden]{ display:none; }
   .notebook-body{ display:flex; gap:12px; align-items:flex-start; }
+
+  /* ---- Blocks (drag-and-drop) ---- */
+  .blocks-palette-group{ display:flex; flex-direction:column; gap:6px; }
+  .blocks-palette-group h3{
+    font-family:"IBM Plex Mono", monospace; font-size:0.66rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:0 0 2px;
+  }
+  .block-chip{
+    font-family:"IBM Plex Mono", monospace; font-size:0.74rem;
+    padding:7px 10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--ink); cursor:grab; user-select:none;
+  }
+  .block-chip:active{ cursor:grabbing; }
+  .block-chip.kind-call{ color:var(--copper-2); }
+  .block-chip.kind-call.i2c{ color:var(--i2c); }
+  .blocks-canvas-scroll{
+    display:flex; flex-direction:column; gap:14px;
+    max-height:480px; overflow-y:auto; padding-right:2px;
+  }
+  .block-fn{ border:1px solid var(--line); border-radius:10px; background:var(--board-face-2); padding:10px 12px; }
+  .block-fn-label{
+    font-family:"IBM Plex Mono", monospace; font-size:0.72rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.05em; color:var(--pin); margin-bottom:8px;
+  }
+  .block-stack{ display:flex; flex-direction:column; gap:6px; min-height:34px; border-radius:8px; }
+  .block-stack.dragover{ outline:2px dashed var(--copper); outline-offset:2px; }
+  .block-row-wrap{ display:flex; flex-direction:column; }
+  .block-row{
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:6px 9px; font-family:"IBM Plex Mono", monospace; font-size:0.76rem; color:var(--ink);
+    cursor:grab;
+  }
+  .block-row.dragging{ opacity:0.4; }
+  .block-row .block-num{
+    width:56px; background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
+    color:var(--ink); font-family:inherit; font-size:inherit; padding:2px 5px;
+  }
+  .block-row .block-text{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:6px;
+    color:var(--ink); font-family:inherit; font-size:inherit; padding:2px 5px; flex:1; min-width:60px;
+  }
+  .block-row .block-rm{
+    margin-left:auto; width:18px; height:18px; border-radius:50%; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--muted); font-size:11px; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none;
+  }
+  .block-row .block-rm:hover{ color:var(--danger); border-color:var(--danger); }
+  .block-row.kind-raw{ border-style:dashed; }
+  .block-raw-text{ color:var(--muted); font-style:italic; white-space:pre-wrap; word-break:break-word; }
+  .block-container .block-stack{ margin:6px 0 0 18px; border-left:2px solid var(--line); padding-left:10px; }
+  .block-branch-label{
+    font-family:"IBM Plex Mono", monospace; font-size:0.66rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:6px 0 0 18px;
+  }
+  .blocks-actions{ display:flex; gap:8px; }
   .code-col{ flex:1; min-width:0; display:flex; flex-direction:column; gap:12px; }
   .api-sidebar{
     flex:none;
     width:200px;
     display:flex; flex-direction:column; gap:6px;
-    /* No height cap: the sidebar grows with the panel instead of hiding
-       entries behind an easy-to-miss inner scrollbar. */
+    max-height:480px; overflow-y:auto;
   }
   .api-sidebar code{
     font-family:"IBM Plex Mono", monospace;
@@ -808,7 +874,7 @@
   <header class="top">
     <div class="brand">
       <div class="mark">Alpha<em>Core</em> Bench</div>
-      <span class="version">v1.1.0</span>
+      <span class="version">v1.2.0</span>
       <div class="tag">One ESP32 hub, six pluggable edges. Drop as many modules on an edge as fit its 4 GPIO pins &mdash; or build a multi-part module in the editor.</div>
     </div>
     <div class="status-pill" id="statusPill">idle</div>
@@ -836,10 +902,34 @@
 
     <section class="panel notebook" aria-label="Code notebook">
       <h2>Notebook</h2>
-      <p class="sub">Write <code style="font-family:inherit">setup()</code> and <code style="font-family:inherit">loop()</code> for the master. Only modules attached to an edge are available on the right &mdash; drag a call into the code, or just click to copy it in.</p>
+      <div class="tab-bar" role="tablist">
+        <button class="tab-btn active" id="tabBtnBlocks" role="tab" aria-selected="true">Blocks</button>
+        <button class="tab-btn" id="tabBtnCode" role="tab" aria-selected="false">Code</button>
+      </div>
+      <p class="sub">Build <code style="font-family:inherit">setup()</code> and <code style="font-family:inherit">loop()</code> for the master, either by dragging blocks or by typing code &mdash; both stay in sync. Only modules attached to an edge are available on the right.</p>
+
       <div class="notebook-body">
         <div class="code-col">
-          <textarea id="code" spellcheck="false"></textarea>
+          <div class="tab-panel" id="tabPanelBlocks" role="tabpanel">
+            <div class="blocks-canvas-scroll">
+              <div class="block-fn">
+                <div class="block-fn-label">setup()</div>
+                <div class="block-stack" id="blockStackSetup"></div>
+              </div>
+              <div class="block-fn">
+                <div class="block-fn-label">loop()</div>
+                <div class="block-stack" id="blockStackLoop"></div>
+              </div>
+            </div>
+            <div class="blocks-actions">
+              <button class="btn" id="blocksClearBtn">Clear blocks</button>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="tabPanelCode" role="tabpanel" hidden>
+            <textarea id="code" spellcheck="false"></textarea>
+          </div>
+
           <div class="controls">
             <button class="btn primary" id="runBtn">Run</button>
             <button class="btn" id="resetBtn">Reset board</button>
@@ -1237,31 +1327,6 @@
     return parts.join(" + ");
   }
 
-  var EXAMPLE = [
-    "// The Reach -- a dial on one edge steers a servo on another;",
-    "// a button on a third edge can halt the arm. Each edge here",
-    "// holds just one single-part module, using 1 of its 4 pins.",
-    "function setup() {",
-    "  AlphaDial.Init(UpperLeft);     // Upper-Left -- bearing input (ADC)",
-    "  AlphaServo.Init(Top);          // Top -- the arm (PWM)",
-    "  AlphaButton.Init(Bottom);      // Bottom -- emergency stop (DI)",
-    "  AlphaLED.Init(UpperRight);     // Upper-Right -- status light (DO)",
-    "  Serial.println(\"AlphaCore online: 6 edges, 24 GPIO pins total.\");",
-    "}",
-    "",
-    "function loop() {",
-    "  var bearing = AlphaDial.Read();     // 0-100",
-    "  var stop    = AlphaButton.IsPressed();",
-    "",
-    "  if (stop) {",
-    "    AlphaLED.Off();",
-    "  } else {",
-    "    AlphaServo.MoveTo(Math.round(bearing * 1.8));   // 0-180 deg",
-    "    AlphaLED.On();",
-    "  }",
-    "}"
-  ].join("\n");
-
   /* ---------- svg board render (static parts) ---------- */
   var svg = document.getElementById("boardSvg");
   (function drawBoard(){
@@ -1498,6 +1563,31 @@
   /* ---------- api hints ---------- */
   var apiHints = document.getElementById("apiHints");
 
+  /* ---------- notebook tabs ---------- */
+  var tabBtnCode = document.getElementById("tabBtnCode");
+  var tabBtnBlocks = document.getElementById("tabBtnBlocks");
+  var tabPanelCode = document.getElementById("tabPanelCode");
+  var tabPanelBlocks = document.getElementById("tabPanelBlocks");
+  // Code and Blocks are two views of the same setup()/loop() program, kept
+  // in sync on every switch: leaving Blocks regenerates the code from the
+  // block stacks, leaving Code re-parses the code back into blocks.
+  function switchTab(name){
+    var isCode = name === "code";
+    var wasCode = !tabPanelCode.hidden;
+    if (isCode && !wasCode) syncBlocksToCode();
+    else if (!isCode && wasCode) syncCodeToBlocks();
+    tabBtnCode.classList.toggle("active", isCode);
+    tabBtnBlocks.classList.toggle("active", !isCode);
+    tabBtnCode.setAttribute("aria-selected", String(isCode));
+    tabBtnBlocks.setAttribute("aria-selected", String(!isCode));
+    tabPanelCode.hidden = !isCode;
+    tabPanelBlocks.hidden = isCode;
+    var ctrlGroup = document.getElementById("sidebarControlGroup");
+    if (ctrlGroup) ctrlGroup.style.display = isCode ? "none" : "";
+  }
+  tabBtnCode.addEventListener("click", function(){ switchTab("code"); });
+  tabBtnBlocks.addEventListener("click", function(){ switchTab("blocks"); });
+
   /* ---------- auto-edit setup() on attach/detach ---------- */
   var codeEl = document.getElementById("code");
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
@@ -1731,6 +1821,7 @@
     if (!bundle) return;
     bundle.children.forEach(function(inst){ removeBindingCode(inst.bind); });
     slots[edgeName] = null;
+    syncCodeToBlocks();
     renderAll();
     buildApiHints();
     log("Detached " + bundleLabel(bundle) + " from " + edgeName.replace(/([A-Z])/g," $1").trim() + ".", "dim");
@@ -1758,6 +1849,7 @@
     }
     codeEl.value = codeEl.value.replace(new RegExp("\\b" + escapeRegExp(oldName) + "\\b", "g"), name);
     inst.bind = name;
+    syncCodeToBlocks();
     log("Renamed " + oldName + " to " + name + " in the code.", "ok");
     buildApiHints();
     renderAll();
@@ -1768,9 +1860,12 @@
   // instance's single icon-holder, or one sub-part's icon within a group
   // chip). Takes the holder element + that part's own type/state directly,
   // so a multi-part group chip can wire each sub-icon independently.
-  function wireInteractiveOne(holderEl, type, state){
+  // onChange defaults to the board's own renderAll -- the Module Editor's
+  // draft preview passes a smaller one that just repaints that one icon.
+  function wireInteractiveOne(holderEl, type, state, onChange){
+    var refresh = onChange || renderAll;
     if (type === "AlphaButton"){
-      var press = function(down){ state.pressed = down; renderAll(); };
+      var press = function(down){ state.pressed = down; refresh(); };
       holderEl.addEventListener("pointerdown", function(ev){ if (ev.target.closest(".bind-input")) return; press(true); });
       holderEl.addEventListener("pointerup", function(){ press(false); });
       holderEl.addEventListener("pointerleave", function(){ press(false); });
@@ -1788,7 +1883,7 @@
         var ang = Math.atan2(ev.clientY - cy0, ev.clientX - cx0) * 180/Math.PI;
         var pct = Math.max(0, Math.min(100, Math.round(((ang + 180) / 360) * 100)));
         state.value = pct;
-        renderAll();
+        refresh();
       });
       holderEl.addEventListener("pointerup", function(){ dragging = false; });
     }
@@ -1806,7 +1901,7 @@
         var py = Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height));
         state.x = Math.round(px * 100);
         state.y = Math.round((1-py) * 100);
-        renderAll();
+        refresh();
       };
       holderEl.addEventListener("pointermove", function(ev){ if (jdragging) moveJoy(ev); });
       holderEl.addEventListener("pointerup", function(){ jdragging = false; });
@@ -1814,9 +1909,9 @@
     if (type === "AlphaMotion"){
       holderEl.addEventListener("click", function(ev){
         if (ev.target.closest(".bind-input")) return;
-        state.active = true; renderAll();
+        state.active = true; refresh();
         clearTimeout(state._mt);
-        state._mt = setTimeout(function(){ state.active = false; renderAll(); }, 2000);
+        state._mt = setTimeout(function(){ state.active = false; refresh(); }, 2000);
       });
     }
   }
@@ -1881,6 +1976,10 @@
         slots[target.name] = { specIds: [dragSpecId], children: attached };
       }
       attached.forEach(function(inst){ addInitCall(inst.bind, target.name); });
+      // addInitCall edits the Code textarea directly; re-parse it into
+      // blocksState so the Blocks tab immediately shows the same Init()
+      // call at the right edge instead of a stale pre-attach state.
+      syncCodeToBlocks();
       var binds = attached.map(function(c){ return c.bind + ".Init(" + target.name + ")"; }).join(", ");
       log("Attached " + spec.label + " to " + target.name.replace(/([A-Z])/g," $1").trim() + " — added " + binds + " to setup().", "ok");
     }
@@ -1921,15 +2020,21 @@
     var c = document.createElement("code");
     if (isI2C) c.className = "i2c";
     c.textContent = call;
-    c.title = "Drag into the code, or click to insert at the cursor";
+    c.title = "Drag into the code or a block stack, or click to insert into code at the cursor";
     c.draggable = true;
     c.addEventListener("dragstart", function(ev){
+      // Plain text so a native drop onto the textarea inserts it; the
+      // custom type carries the same call as a block for the Blocks tab.
+      // Whichever target is actually visible is the only one reachable.
       ev.dataTransfer.setData("text/plain", call + ";");
+      ev.dataTransfer.setData("application/x-block", JSON.stringify({ source: "palette", kind: "call", label: call, code: call + ";" }));
       ev.dataTransfer.effectAllowed = "copy";
       c.classList.add("dragging");
     });
     c.addEventListener("dragend", function(){ c.classList.remove("dragging"); });
-    c.addEventListener("click", function(){ insertIntoCode(call + ";"); });
+    c.addEventListener("click", function(){
+      if (!tabPanelCode.hidden) insertIntoCode(call + ";");
+    });
     apiHints.appendChild(c);
   }
 
@@ -1953,7 +2058,477 @@
       c.textContent = "Attach a module to an edge to see its calls here";
       apiHints.appendChild(c);
     }
+    renderBlocksPalette();
   }
+
+  /* ---------- blocks (drag-and-drop program builder) ---------- */
+  var blockStackSetup = document.getElementById("blockStackSetup");
+  var blockStackLoop = document.getElementById("blockStackLoop");
+  var blocksClearBtn = document.getElementById("blocksClearBtn");
+  var blocksState = { setup: [], loop: [] };
+  var blockIdCounter = 0;
+
+  var CONTROL_BLOCKS = [
+    { kind: "wait", label: "wait ___ ms" },
+    { kind: "repeat", label: "repeat ___ times" },
+    { kind: "if", label: "if ___" },
+    { kind: "ifelse", label: "if ___ / else" },
+    { kind: "comment", label: "// comment" }
+  ];
+
+  function makePaletteChip(kind, label, code, isI2C){
+    var chip = document.createElement("div");
+    chip.className = "block-chip kind-" + (kind === "call" ? "call" : "control") + (isI2C ? " i2c" : "");
+    chip.textContent = label;
+    chip.draggable = true;
+    chip.title = "Drag into setup() or loop()";
+    chip.addEventListener("dragstart", function(ev){
+      ev.dataTransfer.effectAllowed = "copy";
+      ev.dataTransfer.setData("text/plain", JSON.stringify({ source: "palette", kind: kind, label: label, code: code || null }));
+    });
+    return chip;
+  }
+
+  // Appended into the shared api-sidebar (module-call chips there already
+  // work for both tabs). This "Control" group is only meaningful for the
+  // Blocks tab -- dropping one onto the Code textarea would insert raw
+  // JSON -- so it's hidden whenever the Code tab is the one showing.
+  function renderBlocksPalette(){
+    var ctrlGroup = document.createElement("div");
+    ctrlGroup.className = "blocks-palette-group";
+    ctrlGroup.id = "sidebarControlGroup";
+    ctrlGroup.style.display = tabPanelCode.hidden ? "" : "none";
+    var ctrlH = document.createElement("h3");
+    ctrlH.textContent = "Control";
+    ctrlGroup.appendChild(ctrlH);
+    CONTROL_BLOCKS.forEach(function(cb){
+      ctrlGroup.appendChild(makePaletteChip(cb.kind, cb.label, null, false));
+    });
+    apiHints.appendChild(ctrlGroup);
+  }
+
+  function newBlock(kind, label, code){
+    blockIdCounter++;
+    var b = { id: "blk" + blockIdCounter, kind: kind };
+    if (kind === "call"){ b.label = label; b.code = code; }
+    else if (kind === "wait"){ b.ms = 500; }
+    else if (kind === "repeat"){ b.count = 3; b.children = []; }
+    else if (kind === "if"){ b.cond = "true"; b.children = []; }
+    else if (kind === "ifelse"){ b.cond = "true"; b.children = []; b.elseChildren = []; }
+    else if (kind === "comment"){ b.text = "note"; }
+    else if (kind === "raw"){ b.text = label; }
+    return b;
+  }
+
+  function findBlockById(id, arr){
+    for (var i = 0; i < arr.length; i++){
+      if (arr[i].id === id) return arr[i];
+      if (arr[i].children){
+        var found = findBlockById(id, arr[i].children);
+        if (found) return found;
+      }
+      if (arr[i].elseChildren){
+        var foundElse = findBlockById(id, arr[i].elseChildren);
+        if (foundElse) return foundElse;
+      }
+    }
+    return null;
+  }
+
+  function findAndRemoveBlock(id, arr){
+    for (var i = 0; i < arr.length; i++){
+      if (arr[i].id === id) return arr.splice(i, 1)[0];
+      if (arr[i].children){
+        var found = findAndRemoveBlock(id, arr[i].children);
+        if (found) return found;
+      }
+      if (arr[i].elseChildren){
+        var foundElse = findAndRemoveBlock(id, arr[i].elseChildren);
+        if (foundElse) return foundElse;
+      }
+    }
+    return null;
+  }
+
+  function removeBlockById(id){
+    return findAndRemoveBlock(id, blocksState.setup) || findAndRemoveBlock(id, blocksState.loop);
+  }
+
+  function blockContainsTargetArray(block, targetArr){
+    var branches = [];
+    if (block.children) branches.push(block.children);
+    if (block.elseChildren) branches.push(block.elseChildren);
+    return branches.some(function(arr){
+      return arr === targetArr || arr.some(function(c){ return blockContainsTargetArray(c, targetArr); });
+    });
+  }
+
+  function computeInsertIndex(containerEl, clientY){
+    var rows = Array.prototype.filter.call(containerEl.children, function(c){
+      return c.classList.contains("block-row-wrap");
+    });
+    for (var i = 0; i < rows.length; i++){
+      var rect = rows[i].getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return i;
+    }
+    return rows.length;
+  }
+
+  // blockStackSetup/blockStackLoop are persistent DOM nodes reused across
+  // re-renders (only their contents are cleared), so this must bind its
+  // listeners exactly once per element -- otherwise each re-render stacks
+  // another drop handler on top and a single drop inserts N copies.
+  function attachStackDnD(containerEl, arr){
+    containerEl._dndArr = arr;
+    if (containerEl._dndBound) return;
+    containerEl._dndBound = true;
+    containerEl.addEventListener("dragover", function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      containerEl.classList.add("dragover");
+    });
+    containerEl.addEventListener("dragleave", function(ev){
+      if (ev.target === containerEl) containerEl.classList.remove("dragover");
+    });
+    containerEl.addEventListener("drop", function(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      containerEl.classList.remove("dragover");
+      var raw = ev.dataTransfer.getData("application/x-block") || ev.dataTransfer.getData("text/plain");
+      var data;
+      try { data = JSON.parse(raw); } catch (e){ return; }
+      var currentArr = containerEl._dndArr;
+      var idx = computeInsertIndex(containerEl, ev.clientY);
+      if (data.source === "palette"){
+        currentArr.splice(idx, 0, newBlock(data.kind, data.label, data.code));
+      } else if (data.source === "stack"){
+        var existing = findBlockById(data.id, blocksState.setup) || findBlockById(data.id, blocksState.loop);
+        if (!existing || existing.children === currentArr || blockContainsTargetArray(existing, currentArr)) return;
+        removeBlockById(data.id);
+        currentArr.splice(idx, 0, existing);
+      }
+      renderAllBlockStacks();
+    });
+  }
+
+  function renderBlockRow(block, parentArr){
+    var wrap = document.createElement("div");
+    wrap.className = "block-row-wrap" + (block.children ? " block-container" : "");
+
+    var row = document.createElement("div");
+    row.className = "block-row";
+    row.draggable = true;
+
+    if (block.kind === "call"){
+      var callLabel = document.createElement("span");
+      callLabel.textContent = block.label;
+      row.appendChild(callLabel);
+    } else if (block.kind === "wait"){
+      row.appendChild(document.createTextNode("wait"));
+      var msInput = document.createElement("input");
+      msInput.type = "number"; msInput.className = "block-num"; msInput.min = "0"; msInput.step = "10";
+      msInput.value = block.ms;
+      msInput.addEventListener("input", function(){ block.ms = parseInt(msInput.value, 10) || 0; });
+      row.appendChild(msInput);
+      row.appendChild(document.createTextNode("ms"));
+    } else if (block.kind === "repeat"){
+      row.appendChild(document.createTextNode("repeat"));
+      var countInput = document.createElement("input");
+      countInput.type = "number"; countInput.className = "block-num"; countInput.min = "1";
+      countInput.value = block.count;
+      countInput.addEventListener("input", function(){ block.count = parseInt(countInput.value, 10) || 1; });
+      row.appendChild(countInput);
+      row.appendChild(document.createTextNode("times"));
+    } else if (block.kind === "if" || block.kind === "ifelse"){
+      row.appendChild(document.createTextNode("if"));
+      var condInput = document.createElement("input");
+      condInput.type = "text"; condInput.className = "block-text"; condInput.placeholder = "condition";
+      condInput.value = block.cond;
+      condInput.addEventListener("input", function(){ block.cond = condInput.value; });
+      row.appendChild(condInput);
+    } else if (block.kind === "comment"){
+      row.appendChild(document.createTextNode("//"));
+      var textInput = document.createElement("input");
+      textInput.type = "text"; textInput.className = "block-text"; textInput.placeholder = "comment";
+      textInput.value = block.text;
+      textInput.addEventListener("input", function(){ block.text = textInput.value; });
+      row.appendChild(textInput);
+    } else if (block.kind === "raw"){
+      row.classList.add("kind-raw");
+      var rawPreview = document.createElement("span");
+      rawPreview.className = "block-raw-text";
+      rawPreview.textContent = block.text;
+      rawPreview.title = "Code from the Code tab that isn't a recognized block shape -- edit it there";
+      row.appendChild(rawPreview);
+    }
+
+    var rm = document.createElement("div");
+    rm.className = "block-rm";
+    rm.textContent = "×";
+    rm.title = "Remove block";
+    rm.addEventListener("click", function(){
+      var i = parentArr.indexOf(block);
+      if (i >= 0) parentArr.splice(i, 1);
+      renderAllBlockStacks();
+    });
+    row.appendChild(rm);
+
+    row.addEventListener("dragstart", function(ev){
+      ev.stopPropagation();
+      ev.dataTransfer.effectAllowed = "move";
+      ev.dataTransfer.setData("text/plain", JSON.stringify({ source: "stack", id: block.id }));
+      row.classList.add("dragging");
+    });
+    row.addEventListener("dragend", function(){ row.classList.remove("dragging"); });
+
+    wrap.appendChild(row);
+
+    if (block.children){
+      var childStack = document.createElement("div");
+      childStack.className = "block-stack";
+      wrap.appendChild(childStack);
+      renderBlockStack(childStack, block.children);
+    }
+    if (block.kind === "ifelse"){
+      var elseLabel = document.createElement("div");
+      elseLabel.className = "block-branch-label";
+      elseLabel.textContent = "else";
+      wrap.appendChild(elseLabel);
+      var elseStack = document.createElement("div");
+      elseStack.className = "block-stack";
+      wrap.appendChild(elseStack);
+      renderBlockStack(elseStack, block.elseChildren);
+    }
+    return wrap;
+  }
+
+  function renderBlockStack(containerEl, arr){
+    containerEl.innerHTML = "";
+    arr.forEach(function(block){
+      containerEl.appendChild(renderBlockRow(block, arr));
+    });
+    attachStackDnD(containerEl, arr);
+  }
+
+  function renderAllBlockStacks(){
+    renderBlockStack(blockStackSetup, blocksState.setup);
+    renderBlockStack(blockStackLoop, blocksState.loop);
+  }
+
+  function genBlockCode(arr, indent){
+    var pad = new Array(indent + 1).join("  ");
+    return arr.map(function(block){
+      if (block.kind === "call") return pad + block.code;
+      if (block.kind === "wait") return pad + "delay(" + (block.ms || 0) + ");";
+      if (block.kind === "comment") return pad + "// " + (block.text || "");
+      if (block.kind === "raw"){
+        return (block.text || "").split("\n").map(function(l){ return pad + l; }).join("\n");
+      }
+      if (block.kind === "repeat"){
+        return pad + "for (let i = 0; i < " + (block.count || 1) + "; i++) {\n" +
+          genBlockCode(block.children, indent + 1) + "\n" + pad + "}";
+      }
+      if (block.kind === "if" || block.kind === "ifelse"){
+        var s = pad + "if (" + (block.cond || "true") + ") {\n" +
+          genBlockCode(block.children, indent + 1) + "\n" + pad + "}";
+        if (block.kind === "ifelse"){
+          s += " else {\n" + genBlockCode(block.elseChildren, indent + 1) + "\n" + pad + "}";
+        }
+        return s;
+      }
+      return "";
+    }).join("\n");
+  }
+
+  // Same brace-matching approach as findSetupBlock, generalized to any
+  // top-level "function name() { ... }" so it can also target loop().
+  function findFnBlock(code, fnName){
+    var m = new RegExp("function\\s+" + fnName + "\\s*\\(\\s*\\)\\s*\\{").exec(code);
+    if (!m) return null;
+    var braceStart = m.index + m[0].length - 1;
+    var depth = 0;
+    for (var i = braceStart; i < code.length; i++){
+      if (code[i] === "{") depth++;
+      else if (code[i] === "}"){
+        depth--;
+        if (depth === 0) return { bodyStart: braceStart + 1, bodyEnd: i };
+      }
+    }
+    return null;
+  }
+
+  function syncBlocksToCode(){
+    var code = codeEl.value;
+    ["setup", "loop"].forEach(function(fnName){
+      var arr = blocksState[fnName];
+      var body = arr.length ? "\n" + genBlockCode(arr, 1) + "\n" : "\n";
+      var block = findFnBlock(code, fnName);
+      if (block){
+        code = code.slice(0, block.bodyStart) + body + code.slice(block.bodyEnd);
+      } else {
+        code += (code.trim() ? "\n\n" : "") + "function " + fnName + "() {" + body + "}";
+      }
+    });
+    codeEl.value = code;
+  }
+
+  // Strips whatever leading whitespace every line shares, so re-indenting a
+  // raw chunk with genBlockCode's `pad` doesn't compound on every round trip.
+  function dedent(lines){
+    var minIndent = null;
+    lines.forEach(function(l){
+      if (!l.trim()) return;
+      var m = /^[ \t]*/.exec(l)[0];
+      if (minIndent === null || m.length < minIndent.length) minIndent = m;
+    });
+    if (!minIndent) return lines;
+    return lines.map(function(l){
+      return l.indexOf(minIndent) === 0 ? l.slice(minIndent.length) : l.replace(/^[ \t]*/, "");
+    });
+  }
+
+  // Finds the "}" matching the "{" at openIdx by counting depth one
+  // character at a time. Char-level (not per-line) so a line like "} else {"
+  // -- one close immediately followed by one open -- correctly registers as
+  // depth hitting 0 and then 1 again, instead of netting to "unchanged" the
+  // way counting braces per whole line would.
+  function findMatchingClose(text, openIdx){
+    var depth = 1;
+    for (var p = openIdx + 1; p < text.length; p++){
+      if (text[p] === "{") depth++;
+      else if (text[p] === "}"){
+        depth--;
+        if (depth === 0) return p;
+      }
+    }
+    return -1;
+  }
+
+  function lineIndexAt(text, charIdx){
+    var count = 0;
+    for (var p = 0; p < charIdx; p++){ if (text[p] === "\n") count++; }
+    return count;
+  }
+
+  // Parses the restricted subset of JS this builder itself generates (plain
+  // calls, delay(), // comments, and for/if/if-else blocks) into blocks.
+  // Anything else -- multi-statement lines, while, "else if", arbitrary
+  // expressions -- is kept verbatim as a "raw" block so nothing a person
+  // wrote by hand in the Code tab is ever lost or silently rewritten.
+  function parseStatements(text){
+    var lines = text.split("\n");
+    var lineStartOffsets = [];
+    (function(){
+      var offset = 0;
+      for (var li = 0; li < lines.length; li++){
+        lineStartOffsets.push(offset);
+        offset += lines[li].length + 1;
+      }
+    })();
+    var blocks = [];
+    var rawLines = [];
+    function flushRaw(){
+      if (rawLines.length){
+        var deduped = dedent(rawLines).join("\n");
+        if (deduped.trim()) blocks.push(newBlock("raw", deduped));
+      }
+      rawLines = [];
+    }
+    var i = 0;
+    while (i < lines.length){
+      var line = lines[i];
+      var trimmed = line.trim();
+      if (trimmed === ""){ i++; continue; }
+      var mFor = /^for\s*\(\s*let\s+i\s*=\s*0\s*;\s*i\s*<\s*(\d+)\s*;\s*i\+\+\s*\)\s*\{$/.exec(trimmed);
+      var mIf = /^if\s*\((.*)\)\s*\{$/.exec(trimmed);
+      if (mFor || mIf){
+        var absOpenIdx = lineStartOffsets[i] + line.lastIndexOf("{");
+        var closeIdx = findMatchingClose(text, absOpenIdx);
+        if (closeIdx === -1){
+          // Unbalanced braces -- treat this header line as unparseable raw text.
+          rawLines.push(line);
+          i++;
+          continue;
+        }
+        var bodyText = text.slice(absOpenIdx + 1, closeIdx);
+        var elseChildren = null;
+        var endIdx = closeIdx;
+        if (mIf){
+          var mElse = /^\s*else\s*\{/.exec(text.slice(closeIdx + 1));
+          if (mElse){
+            var elseOpenAbsIdx = closeIdx + 1 + mElse[0].length - 1;
+            var elseCloseIdx = findMatchingClose(text, elseOpenAbsIdx);
+            if (elseCloseIdx !== -1){
+              elseChildren = parseStatements(text.slice(elseOpenAbsIdx + 1, elseCloseIdx));
+              endIdx = elseCloseIdx;
+            }
+          }
+        }
+        flushRaw();
+        var children = parseStatements(bodyText);
+        if (mFor){
+          var repBlock = newBlock("repeat");
+          repBlock.count = parseInt(mFor[1], 10) || 1;
+          repBlock.children = children;
+          blocks.push(repBlock);
+        } else if (elseChildren){
+          var ifElseBlock = newBlock("ifelse");
+          ifElseBlock.cond = mIf[1];
+          ifElseBlock.children = children;
+          ifElseBlock.elseChildren = elseChildren;
+          blocks.push(ifElseBlock);
+        } else {
+          var ifBlock = newBlock("if");
+          ifBlock.cond = mIf[1];
+          ifBlock.children = children;
+          blocks.push(ifBlock);
+        }
+        i = lineIndexAt(text, endIdx) + 1;
+        continue;
+      }
+      var mComment = /^\/\/\s?(.*)$/.exec(trimmed);
+      var mWait = /^delay\(\s*(\d+)\s*\)\s*;$/.exec(trimmed);
+      var mCall = /^([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+\([^;{}]*\))\s*;$/.exec(trimmed);
+      if (mComment){
+        flushRaw();
+        blocks.push(newBlock("comment", mComment[1]));
+        i++;
+      } else if (mWait){
+        flushRaw();
+        var waitBlock = newBlock("wait", null);
+        waitBlock.ms = parseInt(mWait[1], 10) || 0;
+        blocks.push(waitBlock);
+        i++;
+      } else if (mCall){
+        flushRaw();
+        blocks.push(newBlock("call", mCall[1], mCall[1] + ";"));
+        i++;
+      } else {
+        rawLines.push(line);
+        i++;
+      }
+    }
+    flushRaw();
+    return blocks;
+  }
+
+  function syncCodeToBlocks(){
+    var code = codeEl.value;
+    ["setup", "loop"].forEach(function(fnName){
+      var block = findFnBlock(code, fnName);
+      var body = block ? code.slice(block.bodyStart, block.bodyEnd) : "";
+      blocksState[fnName] = parseStatements(body);
+    });
+    renderAllBlockStacks();
+  }
+
+  blocksClearBtn.addEventListener("click", function(){
+    blocksState.setup = [];
+    blocksState.loop = [];
+    renderAllBlockStacks();
+  });
+
+  renderAllBlockStacks();
 
   /* ---------- module editor ---------- */
   var editorOverlay = document.getElementById("editorOverlay");
@@ -1972,6 +2547,7 @@
   var editorSub = document.getElementById("editorSub");
   var draft = [];
   var draftNames = []; // parallel to draft — optional per-part name, "" if unset
+  var draftStates = []; // parallel to draft — live state so the preview icon is interactive (dial/button/etc.)
   var editingSpecId = null;
 
   function draftPins(){ return draft.reduce(function(sum,t){ return sum + (COMPONENTS[t].usesI2C?0:COMPONENTS[t].pinCost); }, 0); }
@@ -1992,6 +2568,7 @@
         if (!wouldFit) return;
         draft.push(type);
         draftNames.push("");
+        draftStates.push(def.makeState());
         renderEditor();
       });
       editorPalette.appendChild(btn);
@@ -2008,8 +2585,14 @@
 
       var iconHolder = document.createElement("div");
       iconHolder.className = "icon-holder";
-      iconHolder.innerHTML = def.renderIcon(def.makeState());
+      iconHolder.innerHTML = def.renderIcon(draftStates[idx]);
       chip.appendChild(iconHolder);
+      // Interactive here too (dial turns, button presses, etc.) so composing
+      // a module lets you try a part before it's ever attached to a board
+      // edge -- repaint just this one icon instead of the whole draft list.
+      wireInteractiveOne(iconHolder, type, draftStates[idx], function(){
+        iconHolder.innerHTML = def.renderIcon(draftStates[idx]);
+      });
 
       var nameInput = document.createElement("input");
       nameInput.className = "name-input";
@@ -2026,7 +2609,7 @@
       removeBtn.className = "remove";
       removeBtn.textContent = "×";
       removeBtn.title = "Remove";
-      removeBtn.addEventListener("click", function(){ draft.splice(idx,1); draftNames.splice(idx,1); renderEditor(); });
+      removeBtn.addEventListener("click", function(){ draft.splice(idx,1); draftNames.splice(idx,1); draftStates.splice(idx,1); renderEditor(); });
       chip.appendChild(removeBtn);
 
       draftList.appendChild(chip);
@@ -2061,6 +2644,7 @@
     editingSpecId = spec ? editId : null;
     draft = spec ? spec.children.slice() : [];
     draftNames = spec ? draft.map(function(t, i){ return (spec.childNames && spec.childNames[i]) || ""; }) : [];
+    draftStates = draft.map(function(t){ return COMPONENTS[t].makeState(); });
     editorName.value = spec ? spec.label : "";
     editorTitle.textContent = spec ? "Edit Module" : "Module Editor";
     if (spec){
@@ -2080,6 +2664,7 @@
     editorOverlay.hidden = true;
     draft = [];
     draftNames = [];
+    draftStates = [];
     editingSpecId = null;
   }
 
@@ -2229,8 +2814,16 @@
     }, 200);
   }
 
+  // Run/Save read codeEl.value directly, but the Blocks tab is the other
+  // live view of that same program -- sync it in first so acting from
+  // either tab (Run/Reset/Save/Load are common controls now) uses the
+  // program the user actually sees, not a stale textarea.
+  function syncActiveTabToCode(){
+    if (!tabPanelBlocks.hidden) syncBlocksToCode();
+  }
+
   runBtn.addEventListener("click", function(){
-    if (timer) stopSim(); else runSim();
+    if (timer) stopSim(); else { syncActiveTabToCode(); runSim(); }
   });
   resetBtn.addEventListener("click", function(){
     stopSim();
@@ -2239,6 +2832,7 @@
     }
     slots = { Top:null, UpperRight:null, LowerRight:null, Bottom:null, LowerLeft:null, UpperLeft:null };
     codeEl.value = "function setup() {\n\n}\n\nfunction loop() {\n\n}";
+    syncCodeToBlocks();
     renderAll();
     buildApiHints();
     clearLog();
@@ -2297,6 +2891,7 @@
       if (children.length) slots[e.name] = { specIds:Array.isArray(saved.specIds) ? saved.specIds : [], children:children };
     });
     codeEl.value = typeof data.code === "string" ? data.code : codeEl.value;
+    syncCodeToBlocks();
     renderAll();
     buildApiHints();
     clearLog();
@@ -2317,6 +2912,7 @@
   }
 
   saveBtn.addEventListener("click", function(){
+    syncActiveTabToCode();
     var data = serializeBoard();
     downloadJSON(data, "alphacore-circuit-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json");
     log("Saved circuit + code to a downloaded file.", "ok");
@@ -2341,23 +2937,11 @@
     reader.readAsText(file);
   });
 
-  /* ---------- boot: preset example ---------- */
-  function seed(type, edgeName){
-    var def = COMPONENTS[type];
-    var bind = bindingName(type, type, edgeName);
-    slots[edgeName] = { specIds: [type], children: [
-      { id: nextId++, type: type, state: def.makeState(), bind: bind, pinCost: def.pinCost, adcNeeded: def.adcNeeded||0, usesI2C: def.usesI2C }
-    ]};
-  }
-  seed("AlphaDial", "UpperLeft");
-  seed("AlphaServo", "Top");
-  seed("AlphaButton", "Bottom");
-  seed("AlphaLED", "UpperRight");
-  document.getElementById("code").value = EXAMPLE;
+  /* ---------- boot: empty board ---------- */
   renderToolbox();
   renderAll();
   buildApiHints();
-  log("Loaded: The Reach. 6 edges available, one module each — press Run.", "dim");
+  log("Board empty. 6 edges available — attach a module to get started.", "dim");
 })();
 </script>
 
